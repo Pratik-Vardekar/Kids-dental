@@ -66,12 +66,14 @@ use App\Http\Controllers\Admin\TutorialController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\FaqController as PublicFaqController;
 use App\Http\Controllers\Api\TutorialController as PublicTutorialController;
+use App\Http\Controllers\Api\LocationController as PublicLocationController;
 
 /*
 |--------------------------------------------------------------------------
 | PUBLIC FAQ & TUTORIAL API ROUTES (Supports requests with or without /api/ prefix)
 |--------------------------------------------------------------------------
 */
+
 Route::get('/faq-categories', [PublicFaqController::class, 'getFaqCategories']);
 Route::get('/faq-categories/{category_slug}', [PublicFaqController::class, 'getCategoryFaqs']);
 Route::get('/category-faqs/{category_slug?}', [PublicFaqController::class, 'getCategoryFaqs']);
@@ -83,6 +85,12 @@ Route::get('/tutorial-categories', [PublicTutorialController::class, 'getTutoria
 Route::get('/tutorial-categories/{category_slug}', [PublicTutorialController::class, 'getCategoryTutorials']);
 Route::get('/category-tutorials/{category_slug?}', [PublicTutorialController::class, 'getCategoryTutorials']);
 Route::get('/tutorials/{category_slug?}', [PublicTutorialController::class, 'getCategoryTutorials']);
+
+// Location Check & Details
+Route::get('/location/check', [PublicLocationController::class, 'check']);
+Route::get('/location-details', [PublicLocationController::class, 'getLocationDetails']);
+// Route::get('/location_details', [PublicLocationController::class, 'getLocationDetails']);
+// Route::get('/locationDetails', [PublicLocationController::class, 'getLocationDetails']);
 
 
 /*

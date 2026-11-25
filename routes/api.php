@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/location/check', [LocationController::class, 'check']);
+Route::get('/location-details', [LocationController::class, 'getLocationDetails']);
 Route::controller(AuthController::class)->group(function () {
     Route::post('/register', 'register');
     Route::post('/login', 'login');
@@ -191,6 +192,6 @@ Route::controller(ProductController::class)->group(function () {
 
     // ========== CATEGORY ROUTES (MUST BE LAST - THEY CATCH ALL SINGLE SEGMENTS) ==========
     Route::get('/price-range/{category_slug}/{subcategory_slug?}', 'productPriceRange');
-    Route::get('/{category_slug}', 'categorywiseProduct')->where('category_slug', '^(?!(checkout|buy-now|remove-coupon|remove-coupon-from-cart|apply-coupon|apply-coupon-to-cart|available-coupons|add-to-cart|get-cart|update-cart|clear-cart|cart-count|all-addresses|add-address|update-address|delete-address|distributor-enquiry|become-distributor|distributor-enquiries|faq-categories|category-faqs|help-faqs|home-faqs|tutorials|category-tutorials|tutorial-categories)).*$');
+    Route::get('/{category_slug}', 'categorywiseProduct')->where('category_slug', '^(?!(checkout|buy-now|remove-coupon|remove-coupon-from-cart|apply-coupon|apply-coupon-to-cart|available-coupons|add-to-cart|get-cart|update-cart|clear-cart|cart-count|all-addresses|add-address|update-address|delete-address|location-details|location_details|locationDetails|location|distributor-enquiry|become-distributor|distributor-enquiries|faq-categories|category-faqs|help-faqs|home-faqs|tutorials|category-tutorials|tutorial-categories)).*$');
     Route::get('/{category_slug}/{subcategory_slug}', 'subcategorywiseProduct')->where('category_slug', '^(?!(checkout|buy-now)).*$');
 });
