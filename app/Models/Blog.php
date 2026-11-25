@@ -2,21 +2,33 @@
 
 namespace App\Models;
 
+use App\Models\BlogCategory;
 use Illuminate\Database\Eloquent\Model;
 
 class Blog extends Model
 {
+    protected $table = 'case_study';
+
     protected $fillable = [
 
         'title',
+        'subtitle',
+        'product',
+        'application',
+        'key_benefit',
         'slug',
-        'category',
+        'category_id',
         'image',
         'author',
         'blog_date',
         'short_description',
         'description',
-        'status'
-
+        'status',
+        'tags',
+        'trending'
     ];
+   public function category()
+{
+    return $this->belongsTo(BlogCategory::class, 'category_id');
+}
 }

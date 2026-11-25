@@ -5,10 +5,46 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Review;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ReviewController extends Controller
 {
+    public function create()
+    {
+        $products = Product::where('status', 1)
+            ->orderBy('name')
+            ->get(['id', 'name', 'sku']);
+
+        $users = User::orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return view('admin.review.create', compact('products', 'users'));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'user_id' => 'required|exists:users,id',
+            'rating' => 'required|integer|min:1|max:5',
+            'review' => 'required|string',
+            'status' => 'required|in:0,1',
+        ]);
+
+        Review::create([
+            'product_id' => $validated['product_id'],
+            'user_id' => $validated['user_id'],
+            'rating' => $validated['rating'],
+            'review' => $validated['review'],
+            'status' => (int) $validated['status'],
+        ]);
+
+        return redirect()
+            ->route('admin.review.index')
+            ->with('success', 'Review added successfully.');
+    }
+
     public function index(Request $request)
     {
         $query = Review::with('user', 'product');

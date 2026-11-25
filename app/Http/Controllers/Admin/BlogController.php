@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Blog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+// use App\Models\BlogCategory;    // Category code commented
 
 class BlogController extends Controller
 {
@@ -17,16 +18,17 @@ class BlogController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('title', 'like', '%' . $request->search . '%')
-                  ->orWhere('category', 'like', '%' . $request->search . '%')
-                  ->orWhere('author', 'like', '%' . $request->search . '%')
+                  // ->orWhere('category_id', 'like', '%' . $request->search . '%') // category code commented
+                  // ->orWhere('author', 'like', '%' . $request->search . '%') // author code commented
                   ->orWhere('short_description', 'like', '%' . $request->search . '%');
             });
         }
 
         // Category Filter
-        if ($request->filled('category')) {
-            $query->where('category', $request->category);
-        }
+        // Category Filter - Using category_id
+        // if ($request->filled('category')) {
+        //     $query->where('category_id', $request->category); // Use category_id
+        // }
 
         // Status Filter
         if ($request->status !== null && $request->status !== '') {
@@ -34,9 +36,9 @@ class BlogController extends Controller
         }
 
         // Author Filter
-        if ($request->filled('author')) {
-            $query->where('author', 'like', '%' . $request->author . '%');
-        }
+        // if ($request->filled('author')) {
+        //     $query->where('author', 'like', '%' . $request->author . '%');
+        // }
 
         // Date Filter
         if ($request->filled('date')) {
@@ -44,12 +46,16 @@ class BlogController extends Controller
         }
 
         $blogs = $query->latest()->paginate(10);
+        // $categories = BlogCategory::where('status', 1)->get(); // Category code commented
 
+        // return view('admin.blog.index', compact('blogs', 'categories'));
         return view('admin.blog.index', compact('blogs'));
     }
 
     public function create()
     {
+        // $categories = BlogCategory::where('status', 1)->get(); // Category code commented
+        // return view('admin.blog.create', compact('categories'));
         return view('admin.blog.create');
     }
 
@@ -57,12 +63,18 @@ class BlogController extends Controller
     {
         $request->validate([
             'title'             => 'required',
-            'slug'              => 'required|unique:blogs,slug',
-            'category'          => 'nullable',
-            'author'            => 'nullable',
+            'slug'              => 'required|unique:case_study,slug',
+            'subtitle'          => 'nullable|string|max:255',
+            'product'           => 'nullable|string|max:255',
+            'application'       => 'nullable|string|max:255',
+            'key_benefit'       => 'nullable|string|max:255',
+            // 'category_id'       => 'nullable',              // category code commented
+            'trending'          => 'nullable|boolean',
+            // 'author'            => 'nullable',              // author code commented
             'blog_date'         => 'nullable|date',
             'short_description' => 'nullable',
             'description'       => 'nullable',
+            // 'tags'              => 'nullable|string',        // tags code commented
             'image'             => 'required|image|mimes:jpg,jpeg,png,webp',
             'status'            => 'required',
         ]);
@@ -81,18 +93,24 @@ class BlogController extends Controller
         Blog::create([
             'title'             => $request->title,
             'slug'              => Str::slug($request->slug),
-            'category'          => $request->category,
-            'author'            => $request->author ?? auth()->user()->name ?? 'Admin',
+            'subtitle'          => $request->subtitle,
+            'product'           => $request->product,
+            'application'       => $request->application,
+            'key_benefit'       => $request->key_benefit,
+            // 'category_id'       => $request->category_id,     // category code commented
+            'trending'          => $request->trending ?? 0,
+            // 'author'            => $request->author ?? auth()->user()->name ?? 'Admin', // author code commented
             'blog_date'         => $request->blog_date ?? now(),
             'short_description' => $request->short_description,
             'description'       => $request->description,
+            // 'tags'              => $request->tags,            // tags code commented
             'image'             => $image,
             'status'            => $request->status,
         ]);
 
         return redirect()
-            ->route('blog.index')
-            ->with('success', 'Blog Added Successfully');
+            ->route('case-study.index')
+            ->with('success', 'Case Study Added Successfully');
     }
 
     public function show(Blog $blog)
@@ -102,6 +120,8 @@ class BlogController extends Controller
 
     public function edit(Blog $blog)
     {
+        // $categories = BlogCategory::where('status', 1)->get(); // Category code commented
+        // return view('admin.blog.edit', compact('blog', 'categories'));
         return view('admin.blog.edit', compact('blog'));
     }
 
@@ -109,12 +129,18 @@ class BlogController extends Controller
     {
         $request->validate([
             'title'             => 'required',
-            'slug'              => 'required|unique:blogs,slug,' . $blog->id,
-            'category'          => 'nullable',
-            'author'            => 'nullable',
+            'slug'              => 'required|unique:case_study,slug,' . $blog->id,
+            'subtitle'          => 'nullable|string|max:255',
+            'product'           => 'nullable|string|max:255',
+            'application'       => 'nullable|string|max:255',
+            'key_benefit'       => 'nullable|string|max:255',
+            // 'category_id'       => 'nullable',                 // category code commented
+            'trending'          => 'nullable|boolean',
+            // 'author'            => 'nullable',                 // author code commented
             'blog_date'         => 'nullable|date',
             'short_description' => 'nullable',
             'description'       => 'nullable',
+            // 'tags'              => 'nullable|string',           // tags code commented
             'image'             => 'nullable|image|mimes:jpg,jpeg,png,webp',
             'status'            => 'required',
         ]);
@@ -137,18 +163,24 @@ class BlogController extends Controller
         $blog->update([
             'title'             => $request->title,
             'slug'              => Str::slug($request->slug),
-            'category'          => $request->category,
-            'author'            => $request->author,
+            'subtitle'          => $request->subtitle,
+            'product'           => $request->product,
+            'application'       => $request->application,
+            'key_benefit'       => $request->key_benefit,
+            // 'category_id'       => $request->category_id,     // category code commented
+            'trending'          => $request->trending ?? 0,
+            // 'author'            => $request->author,          // author code commented
             'blog_date'         => $request->blog_date,
             'short_description' => $request->short_description,
             'description'       => $request->description,
+            // 'tags'              => $request->tags,            // tags code commented
             'image'             => $image,
             'status'            => $request->status,
         ]);
 
         return redirect()
-            ->route('blog.index')
-            ->with('success', 'Blog Updated Successfully');
+            ->route('case-study.index')
+            ->with('success', 'Case Study Updated Successfully');
     }
 
     public function destroy(Blog $blog)
@@ -161,8 +193,8 @@ class BlogController extends Controller
         $blog->delete();
 
         return redirect()
-            ->route('blog.index')
-            ->with('success', 'Blog Deleted Successfully');
+            ->route('case-study.index')
+            ->with('success', 'Case Study Deleted Successfully');
     }
 
     public function status(Blog $blog)
@@ -172,7 +204,7 @@ class BlogController extends Controller
 
         return redirect()
             ->back()
-            ->with('success', 'Blog status updated successfully');
+            ->with('success', 'Case Study status updated successfully');
     }
 
     public function export(Request $request)
@@ -183,15 +215,16 @@ class BlogController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('title', 'like', '%' . $request->search . '%')
-                  ->orWhere('category', 'like', '%' . $request->search . '%')
-                  ->orWhere('author', 'like', '%' . $request->search . '%');
+                    // ->orWhere('category_id', 'like', '%' . $request->search . '%') // category code commented
+                    // ->orWhere('author', 'like', '%' . $request->search . '%');     // author code commented
+                ;
             });
         }
 
         // Category Filter
-        if ($request->filled('category')) {
-            $query->where('category', $request->category);
-        }
+        // if ($request->filled('category_id')) {
+        //     $query->where('category_id', $request->category_id); // category code commented
+        // }
 
         // Status Filter
         if ($request->status !== null && $request->status !== '') {
@@ -199,9 +232,9 @@ class BlogController extends Controller
         }
 
         // Author Filter
-        if ($request->filled('author')) {
-            $query->where('author', 'like', '%' . $request->author . '%');
-        }
+        // if ($request->filled('author')) {
+        //     $query->where('author', 'like', '%' . $request->author . '%'); // author code commented
+        // }
 
         // Date Filter
         if ($request->filled('date')) {
@@ -210,7 +243,7 @@ class BlogController extends Controller
 
         $blogs = $query->latest()->get();
 
-        $fileName = 'blogs_' . date('Y-m-d_His') . '.csv';
+        $fileName = 'case_studies_' . date('Y-m-d_His') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -227,28 +260,31 @@ class BlogController extends Controller
                 'ID',
                 'Title',
                 'Slug',
-                'Category',
-                'Author',
-                'Blog Date',
+                // 'Category', // category code commented
+                // 'Author',   // author code commented
+                'Case Study Date',
                 'Short Description',
+                // 'Tags',     // tags code commented
                 'Status',
                 'Created At',
                 'Updated At'
             ]);
 
             foreach ($blogs as $blog) {
-                fputcsv($file, [
+                $row = [
                     $blog->id,
                     $blog->title,
                     $blog->slug,
-                    $blog->category ?? '-',
-                    $blog->author ?? '-',
+                    // $blog->category_id ?? '-', // category code commented
+                    // $blog->author ?? '-',      // author code commented
                     $blog->blog_date ? date('d-m-Y', strtotime($blog->blog_date)) : '-',
                     strip_tags($blog->short_description ?? '-'),
+                    // $blog->tags ?? '-',        // tags code commented
                     $blog->status == 1 ? 'Active' : 'Inactive',
                     $blog->created_at->format('d-m-Y H:i:s'),
                     $blog->updated_at->format('d-m-Y H:i:s'),
-                ]);
+                ];
+                fputcsv($file, $row);
             }
 
             fclose($file);

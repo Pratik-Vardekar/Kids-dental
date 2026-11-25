@@ -12,10 +12,16 @@
             <p class="text-muted mb-0">Manage all coupons</p>
         </div>
 
-        <a href="{{ route('coupon.create') }}" class="btn btn-primary">
+        {{-- <a href="{{ route('coupon.create') }}" class="btn ">
             <i class="ti ti-plus me-1"></i>
             Add Coupon
-        </a>
+        </a> --}}
+        <a href="{{ route('coupon.create') }}"
+        class="btn"
+        style="background:#eb6c16; border-color:#eb6c16; color:#fff;">
+         <i class="ti ti-plus me-1"></i>
+         Add Coupon
+     </a>
     </div>
 
     @if(session('success'))
@@ -108,7 +114,7 @@
                     <!-- Buttons -->
                     <div class="col-md-12">
                         <div class="d-flex gap-2 justify-content-end">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" style="background:#eb6c16; border-color:#eb6c16; color:#fff;">
                                 <i class="ti ti-filter me-1"></i>
                                 Filter
                             </button>
@@ -119,7 +125,7 @@
                             </a>
 
                             <!-- CSV Export Button -->
-                            <a href="{{ route('coupon.export', request()->all()) }}" class="btn btn-success">
+                            <a href="{{ route('coupon.export', request()->all()) }}" class="btn btn-success" style="background:#eb6c16; border-color:#eb6c16; color:#fff;">
                                 <i class="ti ti-file-export"></i>
                                 Export CSV
                             </a>

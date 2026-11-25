@@ -296,15 +296,16 @@ MOBILE
                                     </label>
 
                                     <select name="type"
+                                            id="coupon_type"
                                             class="form-select">
 
                                         <option value="fixed"
-                                            {{ $coupon->type == 'fixed' ? 'selected' : '' }}>
-                                            Fixed
+                                            {{ old('type', $coupon->type) == 'fixed' ? 'selected' : '' }}>
+                                            Fixed Amount
                                         </option>
 
                                         <option value="percent"
-                                            {{ $coupon->type == 'percent' ? 'selected' : '' }}>
+                                            {{ old('type', $coupon->type) == 'percent' ? 'selected' : '' }}>
                                             Percentage
                                         </option>
 
@@ -314,52 +315,61 @@ MOBILE
 
                             </div>
 
-                            <div class="col-lg-4">
+                            <div class="col-lg-4" id="coupon_value_col">
 
                                 <div class="form-group">
 
                                     <label class="form-label">
                                         <span>Coupon Value</span>
+                                        <small id="coupon_value_hint" class="text-muted"></small>
                                     </label>
 
                                     <input type="number"
                                            name="value"
+                                           id="coupon_value_input"
                                            class="form-control"
-                                           value="{{ $coupon->value }}">
+                                           step="any"
+                                           value="{{ old('value', $coupon->value) }}">
 
                                 </div>
 
                             </div>
 
-                            <div class="col-lg-4">
+                            <div class="col-lg-4" id="min_amount_col">
 
                                 <div class="form-group">
 
                                     <label class="form-label">
                                         <span>Minimum Amount</span>
+                                        <small class="text-muted">Optional</small>
                                     </label>
 
                                     <input type="number"
                                            name="minimum_amount"
+                                           id="minimum_amount_input"
                                            class="form-control"
-                                           value="{{ $coupon->minimum_amount }}">
+                                           step="any"
+                                           value="{{ old('minimum_amount', $coupon->minimum_amount) }}">
 
                                 </div>
 
                             </div>
 
-                            <div class="col-lg-4">
+                            <div class="col-lg-4" id="max_discount_col">
 
                                 <div class="form-group">
 
                                     <label class="form-label">
                                         <span>Maximum Discount</span>
+                                        <small class="text-muted">Optional</small>
                                     </label>
 
                                     <input type="number"
                                            name="maximum_discount"
+                                           id="maximum_discount_input"
                                            class="form-control"
-                                           value="{{ $coupon->maximum_discount }}">
+                                           step="any"
+                                           value="{{ old('maximum_discount', $coupon->maximum_discount) }}">
 
                                 </div>
 
@@ -471,7 +481,7 @@ MOBILE
                             @foreach($categories as $category)
 
                                 <option value="{{ $category->id }}"
-                                    {{ in_array($category->id, $coupon->categories->pluck('id')->toArray()) ? 'selected' : '' }}>
+                                    {{ in_array($category->id, $coupon->category_ids ?? []) ? 'selected' : '' }}>
 
                                     {{ $category->name }}
 
@@ -506,12 +516,10 @@ MOBILE
 
                             @foreach($categories as $category)
 
-                                <option value="{{ $category->id }}"
-                                    {{ in_array($category->id, $coupon->exclude_category_ids ?? []) ? 'selected' : '' }}>
-
-                                    {{ $category->name }}
-
-                                </option>
+                               <option value="{{ $category->id }}"
+  {{ in_array($category->id, $coupon->exclude_category_ids ?? []) ? 'selected' : '' }}>
+    {{ $category->name }}
+</option>
 
                             @endforeach
 
@@ -628,24 +636,163 @@ MOBILE
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 
 <script>
-
 document.addEventListener('DOMContentLoaded', function () {
 
     const settings = {
-
         plugins: ['remove_button'],
         create: false,
         maxItems: null,
-
+        hidePlaceholder: true,
+        dropdownParent: 'body'
     };
 
-    new TomSelect('#categories', settings);
+    const includeCategories = new TomSelect('#categories', settings);
+    const excludeCategories = new TomSelect('#excluded_categories', settings);
 
-    new TomSelect('#excluded_categories', settings);
+    const includeProducts = new TomSelect('#products', settings);
+    const excludeProducts = new TomSelect('#excluded_products', settings);
 
-    new TomSelect('#products', settings);
+    function syncCategoryDropdowns() {
 
-    new TomSelect('#excluded_products', settings);
+        const included = includeCategories.getValue();
+        const excluded = excludeCategories.getValue();
+
+        includeCategories.clearOptions();
+        excludeCategories.clearOptions();
+
+        @foreach($categories as $category)
+
+        if (!excluded.includes('{{ $category->id }}')) {
+            includeCategories.addOption({
+                value: '{{ $category->id }}',
+                text: '{{ $category->name }}'
+            });
+        }
+
+        if (!included.includes('{{ $category->id }}')) {
+            excludeCategories.addOption({
+                value: '{{ $category->id }}',
+                text: '{{ $category->name }}'
+            });
+        }
+
+        @endforeach
+
+        includeCategories.refreshOptions(false);
+        excludeCategories.refreshOptions(false);
+    }
+
+    function syncProductDropdowns() {
+
+        const included = includeProducts.getValue();
+        const excluded = excludeProducts.getValue();
+
+        includeProducts.clearOptions();
+        excludeProducts.clearOptions();
+
+        @foreach($products as $product)
+
+        if (!excluded.includes('{{ $product->id }}')) {
+            includeProducts.addOption({
+                value: '{{ $product->id }}',
+                text: '{{ $product->name }}'
+            });
+        }
+
+        if (!included.includes('{{ $product->id }}')) {
+            excludeProducts.addOption({
+                value: '{{ $product->id }}',
+                text: '{{ $product->name }}'
+            });
+        }
+
+        @endforeach
+
+        includeProducts.refreshOptions(false);
+        excludeProducts.refreshOptions(false);
+    }
+
+    includeCategories.on('change', syncCategoryDropdowns);
+    excludeCategories.on('change', syncCategoryDropdowns);
+
+    includeProducts.on('change', syncProductDropdowns);
+    excludeProducts.on('change', syncProductDropdowns);
+
+    syncCategoryDropdowns();
+    syncProductDropdowns();
+
+    // ==========================================
+    // COUPON TYPE DYNAMIC TOGGLE (Fixed vs Percent)
+    // ==========================================
+    const couponTypeSelect = document.getElementById('coupon_type');
+    const maxDiscountCol = document.getElementById('max_discount_col');
+    const maxDiscountInput = document.getElementById('maximum_discount_input');
+    const minAmountCol = document.getElementById('min_amount_col');
+    const couponValueCol = document.getElementById('coupon_value_col');
+    const couponValueHint = document.getElementById('coupon_value_hint');
+    const couponValueInput = document.getElementById('coupon_value_input');
+
+    function toggleDiscountFields() {
+        if (!couponTypeSelect) return;
+
+        const isFixed = couponTypeSelect.value === 'fixed';
+
+        if (isFixed) {
+            // FIXED AMOUNT: Hide Maximum Discount, Show Minimum Amount
+            if (maxDiscountCol) {
+                maxDiscountCol.style.display = 'none';
+            }
+            if (maxDiscountInput) {
+                maxDiscountInput.disabled = true;
+            }
+
+            if (minAmountCol) {
+                minAmountCol.style.display = 'block';
+                minAmountCol.className = 'col-lg-6 col-md-6 col-12';
+            }
+
+            if (couponValueCol) {
+                couponValueCol.className = 'col-lg-6 col-md-6 col-12';
+            }
+
+            if (couponValueHint) {
+                couponValueHint.textContent = 'Discount in ₹';
+            }
+            if (couponValueInput && !couponValueInput.value) {
+                couponValueInput.placeholder = 'e.g. 100';
+            }
+        } else {
+            // PERCENTAGE: Show BOTH Minimum Amount and Maximum Discount
+            if (maxDiscountCol) {
+                maxDiscountCol.style.display = 'block';
+                maxDiscountCol.className = 'col-lg-4 col-md-4 col-12';
+            }
+            if (maxDiscountInput) {
+                maxDiscountInput.disabled = false;
+            }
+
+            if (minAmountCol) {
+                minAmountCol.style.display = 'block';
+                minAmountCol.className = 'col-lg-4 col-md-4 col-12';
+            }
+
+            if (couponValueCol) {
+                couponValueCol.className = 'col-lg-4 col-md-4 col-12';
+            }
+
+            if (couponValueHint) {
+                couponValueHint.textContent = 'Discount in % (e.g. 10)';
+            }
+            if (couponValueInput && !couponValueInput.value) {
+                couponValueInput.placeholder = 'e.g. 10';
+            }
+        }
+    }
+
+    if (couponTypeSelect) {
+        couponTypeSelect.addEventListener('change', toggleDiscountFields);
+        toggleDiscountFields();
+    }
 
 });
 

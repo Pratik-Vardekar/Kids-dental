@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
@@ -59,40 +62,68 @@ class ProfileController extends Controller
     |--------------------------------------------------------------------------
     */
 
- public function changePassword(Request $request)
-{
-    $request->validate([
+    public function changePassword(Request $request)
+    {
+        $request->validate([
 
-        'current_password' => 'required',
+            'current_password' => 'required',
 
-        'password' => 'required|min:6|confirmed',
+            'password' => 'required|min:6|confirmed',
 
-    ]);
+        ]);
 
-    $user = auth()->user();
+        $user = auth()->user();
 
-    if (!Hash::check(
-        $request->current_password,
-        $user->password
-    )) {
+        if (!Hash::check(
+            $request->current_password,
+            $user->password
+        )) {
+
+            return back()->with(
+                'error',
+                'Current password is incorrect'
+            );
+        }
+
+        $user->update([
+
+            'password' => Hash::make($request->password),
+
+            'plain_password' => $request->password,
+
+        ]);
 
         return back()->with(
-            'error',
-            'Current password is incorrect'
+            'success',
+            'Password changed successfully'
         );
     }
+    
+    public function userInvoice($order)
+    {
+        $order = Order::where('id', $order)
+            ->where('user_id', Auth::id())
+            ->with([
+                'user',
+                'items.product',
+                'items.variant',
+                'orderPayments',
+                'refunds',
+                'addresses',
+            ])
+            ->firstOrFail();
 
-    $user->update([
+        $order->normalizeDocumentNumbers();
 
-        'password' => Hash::make($request->password),
+        $pdf = Pdf::loadView('admin.order.invoice', compact('order'))
+            ->setPaper('a4');
 
-        'plain_password' => $request->password,
+        $filename = $order->invoicePdfFilename();
 
-    ]);
-
-    return back()->with(
-        'success',
-        'Password changed successfully'
-    );
-}
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
+    }
 }

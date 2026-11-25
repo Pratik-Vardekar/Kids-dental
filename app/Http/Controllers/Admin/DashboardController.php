@@ -19,8 +19,36 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        // ── Auto-deactivate users inactive for 6+ months ─────────────
+        try {
+            $cutoff = Carbon::now()->subMonths(6);
+            $inactiveQuery = User::where('status', 1)
+                ->where(function ($q) {
+                    $q->whereNull('role_id')->orWhere('role_id', '!=', 1);
+                })
+                ->where(function ($q) {
+                    $q->whereNull('role')->orWhere('role', '!=', 'admin');
+                });
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'last_login_at')) {
+                $inactiveQuery->where(function ($q) use ($cutoff) {
+                    $q->where(function ($sub) use ($cutoff) {
+                        $sub->whereNotNull('last_login_at')->where('last_login_at', '<', $cutoff);
+                    })->orWhere(function ($sub) use ($cutoff) {
+                        $sub->whereNull('last_login_at')->where('created_at', '<', $cutoff);
+                    });
+                });
+            } else {
+                $inactiveQuery->where('created_at', '<', $cutoff);
+            }
+
+            $inactiveQuery->update(['status' => 0]);
+        } catch (\Throwable $e) {}
+
         // ── Basic counts ──────────────────────────────────────────────
         $totalUsers         = User::count();
+        $activeUsers        = User::where('status', 1)->count();
+        $inactiveUsers      = User::where('status', 0)->count();
         $totalProducts      = Product::count();
         $totalCategories    = Category::count();
         $totalSubCategories = SubCategory::count();
@@ -114,13 +142,13 @@ class DashboardController extends Controller
             ->pluck('count', 'date')
             ->toArray();
         
-        $barLabels = [];
-        $barValues = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i)->format('Y-m-d');
-            $barLabels[] = Carbon::now()->subDays($i)->format('D');
-            $barValues[] = $weeklyProducts[$date] ?? 0;
-        }
+       $barLabels = Category::pluck('name')->toArray();
+
+$barValues = Category::withCount('products')
+    ->get()
+    ->pluck('products_count')
+    ->toArray();
+        
         
         // VISUAL 3: SPARKLINE - Already have $blogSparkline, using for blogs card
         
@@ -141,6 +169,8 @@ class DashboardController extends Controller
 
         return view('admin.dashboard', compact(
             'totalUsers',
+            'activeUsers',
+            'inactiveUsers',
             'totalProducts',
             'totalCategories',
             'totalSubCategories',

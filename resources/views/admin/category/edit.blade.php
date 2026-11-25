@@ -7,6 +7,11 @@
     <div class="mb-4">
         <h4 class="mb-1">Edit Category</h4>
         <p class="text-muted mb-0">Update category details</p>
+        <div class="mt-2">
+            <h4 class="fw-bold">
+                Recommended size: <span class="text-primary">500 × 500 px</span>
+            </h4>
+        </div>
     </div>
 
     <div class="card">
@@ -72,6 +77,11 @@
                 </div>
 
                 <div class="col-md-6">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" id="description" class="form-control" rows="3">{{ old('description', $category->description) }}</textarea>
+                </div>
+                
+                <div class="col-md-3">
 
                     <label class="form-label">Status</label>
 
@@ -80,17 +90,30 @@
                         required>
 
                         <option value="1"
-                            {{ $category->status == 1 ? 'selected' : '' }}>
+                            {{ old('status', $category->status) == 1 ? 'selected' : '' }}>
                             Active
                         </option>
 
                         <option value="0"
-                            {{ $category->status == 0 ? 'selected' : '' }}>
+                            {{ old('status', $category->status) == 0 ? 'selected' : '' }}>
                             Inactive
                         </option>
 
                     </select>
 
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Display Order</label>
+                    <input type="number"
+                        name="sort_order"
+                        class="form-control @error('sort_order') is-invalid @enderror"
+                        min="0"
+                        value="{{ old('sort_order', $category->sort_order) }}">
+                    <small class="text-muted">Lower number shows first.</small>
+                    @error('sort_order')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
 
                 <div class="col-12">

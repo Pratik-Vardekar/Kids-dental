@@ -1,21 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
-    <title>@yield('title', 'Admin Dashboard') |  - Agriwow</title>
+    <title>@yield('title', 'Admin Dashboard') | Kids-e-Dental</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Paces is a modern, responsive admin dashboard available on ThemeForest." />
-    <meta name="keywords" content="Paces, admin dashboard, Bootstrap 5 admin, CRM dashboard" />
-    <meta name="author" content="Coderthemes" />
+    <meta name="description" content="Kids-e-Dental - Admin panel for Kids-e-Dental" />
+    <meta name="keywords" content="Kids-e-Dental, admin, CMS, dashboard" />
+    <meta name="author" content="Kids-e-Dental" />
 
     <!-- App favicon -->
-    <link rel="icon" href="{{ asset('backend/assets/images/favicon.jpg') }}" />
-  <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('backend/assets/images/favicon.jpg') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('backend/assets/images/favicon.jpg') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('backend/assets/images/favicon.jpg') }}">
+    <link rel="icon" type="image/png" sizes="32x32"
+        href="{{ asset('backend/assets/images/kids-dental-favicon.png') }}?v={{ time() }}" />
+    <link rel="icon" type="image/png" sizes="16x16"
+        href="{{ asset('backend/assets/images/kids-dental-favicon.png') }}?v={{ time() }}" />
+    <link rel="shortcut icon" type="image/png"
+        href="{{ asset('backend/assets/images/kids-dental-favicon.png') }}?v={{ time() }}" />
+    <link rel="apple-touch-icon" sizes="180x180"
+        href="{{ asset('backend/assets/images/kids-dental-favicon.png') }}?v={{ time() }}">
 
     <!-- Vector Maps css -->
-    <link href="{{ asset('backend/assets/plugins/jsvectormap/jsvectormap.min.css') }}" rel="stylesheet" type="text/css" />
+    <link href="{{ asset('backend/assets/plugins/jsvectormap/jsvectormap.min.css') }}" rel="stylesheet"
+        type="text/css" />
 
     <!-- Theme Config Js -->
     <script src="{{ asset('backend/assets/js/config.js') }}"></script>
@@ -26,10 +32,14 @@
     <!-- App css -->
     <link id="app-style" href="{{ asset('backend/assets/css/app.min.css') }}" rel="stylesheet" type="text/css" />
 
+    <!-- Kids-e-Dental brand overrides -->
+    <link href="{{ asset('backend/assets/css/kids-dental-admin.css') }}?v={{ time() }}" rel="stylesheet"
+        type="text/css" />
+
     @stack('styles')
 </head>
 
-<body style="background-color: #ffffff;">
+<body class="kids-dental-admin">
     <!-- Begin page -->
     <div class="wrapper">
         @include('admin.partials.header')
@@ -71,61 +81,52 @@
 
     <!-- Custom table -->
     <script src="{{ asset('backend/assets/js/pages/custom-table.js') }}"></script>
-            {{-- <script src="{{ asset('backend/assets/js/pages/dashboard-crm.js') }}"></script> --}}
+    {{-- <script src="{{ asset('backend/assets/js/pages/dashboard-crm.js') }}"></script> --}}
 
 
     @stack('scripts')
 
     <!-- Page specific dashboard js -->
     @yield('page-scripts')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-@if(session('success'))
+    @if (session('success'))
+        <script>
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: '{{ session('
+                                                                                                                                                                                                                                                                                                            success ') }}',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        </script>
+    @endif
 
-<script>
+    @if (session('error'))
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: '{{ session('
+                                                                                                                                                                                                                                                                                                            error ') }}',
+                timer: 2500,
+                showConfirmButton: false
+            });
+        </script>
+    @endif
 
-    Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: '{{ session('success') }}',
-        timer: 2000,
-        showConfirmButton: false
-    });
-
-</script>
-
-@endif
-
-@if(session('error'))
-
-<script>
-
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: '{{ session('error') }}',
-        timer: 2500,
-        showConfirmButton: false
-    });
-
-</script>
-
-@endif
-
-@if($errors->any())
-
-<script>
-
-    Swal.fire({
-        icon: 'error',
-        title: 'Validation Error',
-        html: `{!! implode('<br>', $errors->all()) !!}`,
-    });
-
-</script>
-
-@endif
-<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+    @if ($errors->any())
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Validation Error',
+                html: `{!! implode('<br>', $errors->all()) !!}`,
+            });
+        </script>
+    @endif
+    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
 
 </body>
+
 </html>

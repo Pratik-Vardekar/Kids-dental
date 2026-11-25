@@ -1,73 +1,100 @@
 @extends('layouts.admin')
 
 @section('content')
+    <div class="container-fluid my-2">
 
-<div class="container-fluid my-2">
+        <div class="mb-4">
 
-    <div class="mb-4">
+            <h4 class="mb-1">
+                Add Case Study
+            </h4>
 
-        <h4 class="mb-1">
-            Add Blog
-        </h4>
+            <p class="text-muted mb-0">
+                Create new Case Study
+            </p>
+            <p class="text-muted mb-0">Recommended size: <span class="text-primary"> 853 * 461 px</span></p>
+        </div>
 
-        <p class="text-muted mb-0">
-            Create new blog
-        </p>
+        <div class="card">
 
-    </div>
+            <div class="card-body">
 
-    <div class="card">
+                <form action="{{ route('case-study.store') }}" method="POST" enctype="multipart/form-data">
 
-        <div class="card-body">
+                    @csrf
 
-            <form action="{{ route('blog.store') }}"
-                method="POST"
-                enctype="multipart/form-data">
+                    <div class="row">
 
-                @csrf
+                        <div class="col-md-6 mb-3">
 
-                <div class="row">
+                            <label class="form-label">
+                                Title
+                            </label>
 
-                    <div class="col-md-6 mb-3">
+                            <input type="text" name="title" id="title" class="form-control"
+                                placeholder="Enter Case Study Title">
 
-                        <label class="form-label">
-                            Title
-                        </label>
+                        </div>
 
-                        <input type="text"
-                            name="title"
-                            id="title"
-                            class="form-control"
-                            placeholder="Enter Blog Title">
+                        <div class="col-md-6 mb-3">
 
-                    </div>
+                            <label class="form-label">
+                                Slug
+                            </label>
 
-                    <div class="col-md-6 mb-3">
+                            <input type="text" name="slug" id="slug" class="form-control"
+                                placeholder="Auto Generated">
 
-                        <label class="form-label">
-                            Slug
-                        </label>
+                        </div>
 
-                        <input type="text"
-                            name="slug"
-                            id="slug"
-                            class="form-control"
-                            placeholder="Auto Generated">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Subtitle
+                            </label>
+                            <input type="text" name="subtitle" id="subtitle" class="form-control"
+                                value="{{ old('subtitle') }}" placeholder="e.g. Reliable Pediatric Crown Solutions">
+                        </div>
 
-                    </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Product
+                            </label>
+                            <input type="text" name="product" id="product" class="form-control"
+                                value="{{ old('product') }}" placeholder="e.g. Kids-e-Crown®">
+                        </div>
 
-                    <div class="col-md-4 mb-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Application
+                            </label>
+                            <input type="text" name="application" id="application" class="form-control"
+                                value="{{ old('application') }}" placeholder="e.g. Pediatric Crown Restoration">
+                        </div>
 
-                        <label class="form-label">
-                            Category
-                        </label>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                Key Benefit
+                            </label>
+                            <input type="text" name="key_benefit" id="key_benefit" class="form-control"
+                                value="{{ old('key_benefit') }}" placeholder="e.g. Durable & child-friendly solution">
+                        </div>
 
-                        <input type="text"
-                            name="category"
-                            class="form-control">
+                        {{-- <div class="col-md-4 mb-3">
+    <label class="form-label">Category</label>
 
-                    </div>
+    <select name="category_id" class="form-select" required>
+        <option value="">Select Category</option>
 
+        @foreach ($categories as $cat)
+            <option value="{{ $cat->id }}">
+                {{ $cat->name }}
+            </option>
+        @endforeach
+    </select>
+</div> --}}
+
+
+                        {{-- 
                     <div class="col-md-4 mb-3">
 
                         <label class="form-label">
@@ -78,170 +105,174 @@
                             name="author"
                             class="form-control">
 
-                    </div>
+                    </div> --}}
 
-                    <div class="col-md-4 mb-3">
+                        <div class="col-md-4 mb-3">
 
+                            <label class="form-label">
+                                Case Study Date
+                            </label>
+
+                            <input type="date" name="blog_date" class="form-control">
+
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">
+                                Trending
+                            </label>
+                            <select name="trending" class="form-select">
+                                <option value="1">Yes</option>
+                                <option value="0">No</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+
+                            <label class="form-label">
+                                Image
+                            </label>
+
+                            <input type="file" name="image" class="form-control" id="imageInput" accept="image/*">
+
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+
+                            <img id="previewImage" class="rounded border d-none"
+                                style="width:300px;height:180px;object-fit:cover;">
+
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+
+                            <label class="form-label">
+                                Short Description
+                            </label>
+
+                            <textarea name="short_description" id="short_description" rows="4" class="form-control"></textarea>
+
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+
+                            <label class="form-label">
+                                Description
+                            </label>
+
+                            <textarea name="description" id="description" rows="8" class="form-control"></textarea>
+                        </div>
+
+                        {{-- <div class="col-md-12 mb-3">
                         <label class="form-label">
-                            Blog Date
+                            Tags
                         </label>
+                        <input type="text" name="tags" id="tags" class="form-control">
+                    </div> --}}
+                        <script>
+                            document.getElementById('tags').addEventListener('input', function() {
+                                const tags = this.value.split(',').map(tag => tag.trim());
+                                document.getElementById('tags-list').innerHTML = tags.map(tag =>
+                                    `<span class="badge bg-primary">${tag}</span>`).join('');
+                            });
+                        </script>
 
-                        <input type="date"
-                            name="blog_date"
-                            class="form-control">
+                        {{-- <div id="tags-list" class="mt-2">
+                        <span class="badge bg-primary">Tag 1</span>
+                        <span class="badge bg-primary">Tag 2</span>
+                        <span class="badge bg-primary">Tag 3</span>
+                    </div> --}}
+
+                        <div class="col-md-3 mb-3">
+
+                            <label class="form-label">
+                                Status
+                            </label>
+
+                            <select name="status" class="form-select">
+
+                                <option value="1">
+                                    Active
+                                </option>
+
+                                <option value="0">
+                                    Inactive
+                                </option>
+
+                            </select>
+
+                        </div>
 
                     </div>
 
-             <div class="col-md-12 mb-3">
+                    <button type="submit" class="btn btn-primary">
 
-    <label class="form-label">
-        Image
-    </label>
+                        Save Case Study
 
-    <input type="file"
-        name="image"
-        class="form-control"
-        id="imageInput"
-        accept="image/*">
+                    </button>
 
-</div>
+                </form>
 
-<div class="col-md-12 mb-3">
-
-    <img id="previewImage"
-        class="rounded border d-none"
-        style="width:300px;height:180px;object-fit:cover;">
-
-</div>
-
-                    <div class="col-md-12 mb-3">
-
-                        <label class="form-label">
-                            Short Description
-                        </label>
-
-                        <textarea name="short_description"
-                            id="short_description"
-                            rows="4"
-                            class="form-control"></textarea>
-
-                    </div>
-
-                    <div class="col-md-12 mb-3">
-
-                        <label class="form-label">
-                            Description
-                        </label>
-
-                        <textarea name="description"
-                            id="description"
-                            rows="8"
-                            class="form-control"></textarea>
-
-                    </div>
-
-                    <div class="col-md-3 mb-3">
-
-                        <label class="form-label">
-                            Status
-                        </label>
-
-                        <select name="status"
-                            class="form-select">
-
-                            <option value="1">
-                                Active
-                            </option>
-
-                            <option value="0">
-                                Inactive
-                            </option>
-
-                        </select>
-
-                    </div>
-
-                </div>
-
-                <button type="submit"
-                    class="btn btn-primary">
-
-                    Save Blog
-
-                </button>
-
-            </form>
+            </div>
 
         </div>
 
     </div>
+    {{-- CKEditor CDN --}}
+    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+    <script>
+        document.getElementById('imageInput').addEventListener('change', function(e) {
 
-</div>
-{{-- CKEditor CDN --}}
-<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
-<script>
+            const file = e.target.files[0];
 
-    document.getElementById('imageInput').addEventListener('change', function(e) {
+            if (file) {
 
-        const file = e.target.files[0];
+                const reader = new FileReader();
 
-        if(file) {
+                reader.onload = function(event) {
 
-            const reader = new FileReader();
+                    let preview = document.getElementById('previewImage');
 
-            reader.onload = function(event) {
+                    preview.src = event.target.result;
 
-                let preview = document.getElementById('previewImage');
+                    preview.classList.remove('d-none');
 
-                preview.src = event.target.result;
+                }
 
-                preview.classList.remove('d-none');
+                reader.readAsDataURL(file);
 
             }
 
-            reader.readAsDataURL(file);
+        });
+    </script>
+    <script>
+        // Auto Slug Generate
 
-        }
+        document.getElementById('title').addEventListener('keyup', function() {
 
-    });
+            let slug = this.value
+                .toLowerCase()
+                .replace(/[^a-z0-9\u0900-\u097F\s]/g, '')
+                .replace(/\s+/g, '-');
 
-</script>
-<script>
+            document.getElementById('slug').value = slug;
 
-    // Auto Slug Generate
-
-    document.getElementById('title').addEventListener('keyup', function () {
-
-        let slug = this.value
-            .toLowerCase()
-            .replace(/[^a-z0-9\u0900-\u097F\s]/g, '')
-            .replace(/\s+/g, '-');
-
-        document.getElementById('slug').value = slug;
-
-    });
-
-    // CKEditor for Short Description
-
-    ClassicEditor
-        .create(document.querySelector('#short_description'))
-        .catch(error => {
-            console.error(error);
         });
 
-    // CKEditor for Description
+        // CKEditor for Short Description
 
-    ClassicEditor
-        .create(document.querySelector('#description'))
-        .catch(error => {
-            console.error(error);
-        });
+        ClassicEditor
+            .create(document.querySelector('#short_description'))
+            .catch(error => {
+                console.error(error);
+            });
 
-</script>
+        // CKEditor for Description
 
-
-
-
-
-
+        ClassicEditor
+            .create(document.querySelector('#description'))
+            .catch(error => {
+                console.error(error);
+            });
+    </script>
 @endsection

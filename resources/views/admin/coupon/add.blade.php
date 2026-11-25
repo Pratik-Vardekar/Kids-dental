@@ -318,13 +318,14 @@ MOBILE
                                     </label>
 
                                     <select name="type"
+                                            id="coupon_type"
                                             class="form-select">
 
-                                        <option value="fixed">
+                                        <option value="fixed" {{ old('type') == 'fixed' ? 'selected' : '' }}>
                                             Fixed Amount
                                         </option>
 
-                                        <option value="percent">
+                                        <option value="percent" {{ old('type') == 'percent' ? 'selected' : '' }}>
                                             Percentage
                                         </option>
 
@@ -335,29 +336,33 @@ MOBILE
                             </div>
 
                             {{-- VALUE --}}
-                            <div class="col-lg-4 col-md-4 col-12">
+                            <div class="col-lg-4 col-md-4 col-12" id="coupon_value_col">
 
                                 <div class="form-group">
 
                                     <label class="form-label">
                                         <span>Coupon Value</span>
 
-                                        <small>
-                                            Discount value
+                                        <small id="coupon_value_hint">
+                                            Discount in ₹
                                         </small>
                                     </label>
 
                                     <input type="number"
                                            name="value"
+                                           id="coupon_value_input"
                                            class="form-control"
-                                           placeholder="0">
+                                           step="any"
+                                           placeholder="0"
+                                           value="{{ old('value') }}"
+                                           required>
 
                                 </div>
 
                             </div>
 
                             {{-- MIN AMOUNT --}}
-                            <div class="col-lg-4 col-md-4 col-12">
+                            <div class="col-lg-4 col-md-4 col-12" id="min_amount_col">
 
                                 <div class="form-group">
 
@@ -365,21 +370,24 @@ MOBILE
                                         <span>Minimum Amount</span>
 
                                         <small>
-                                            Optional
+                                            Optional (Min Order ₹)
                                         </small>
                                     </label>
 
                                     <input type="number"
                                            name="minimum_amount"
+                                           id="minimum_amount_input"
                                            class="form-control"
-                                           placeholder="0">
+                                           step="any"
+                                           placeholder="0"
+                                           value="{{ old('minimum_amount') }}">
 
                                 </div>
 
                             </div>
 
                             {{-- MAX DISCOUNT --}}
-                            <div class="col-lg-4 col-md-4 col-12">
+                            <div class="col-lg-4 col-md-4 col-12" id="max_discount_col">
 
                                 <div class="form-group">
 
@@ -387,14 +395,17 @@ MOBILE
                                         <span>Maximum Discount</span>
 
                                         <small>
-                                            Optional
+                                            Optional (Max Cap ₹)
                                         </small>
                                     </label>
 
                                     <input type="number"
                                            name="maximum_discount"
+                                           id="maximum_discount_input"
                                            class="form-control"
-                                           placeholder="0">
+                                           step="any"
+                                           placeholder="0"
+                                           value="{{ old('maximum_discount') }}">
 
                                 </div>
 
@@ -818,6 +829,80 @@ document.addEventListener('DOMContentLoaded', function () {
 
     syncCategoryDropdowns();
     syncProductDropdowns();
+
+    // ==========================================
+    // COUPON TYPE DYNAMIC TOGGLE (Fixed vs Percent)
+    // ==========================================
+    const couponTypeSelect = document.getElementById('coupon_type');
+    const maxDiscountCol = document.getElementById('max_discount_col');
+    const maxDiscountInput = document.getElementById('maximum_discount_input');
+    const minAmountCol = document.getElementById('min_amount_col');
+    const couponValueCol = document.getElementById('coupon_value_col');
+    const couponValueHint = document.getElementById('coupon_value_hint');
+    const couponValueInput = document.getElementById('coupon_value_input');
+
+    function toggleDiscountFields() {
+        if (!couponTypeSelect) return;
+
+        const isFixed = couponTypeSelect.value === 'fixed';
+
+        if (isFixed) {
+            // FIXED AMOUNT: Hide Maximum Discount, Show Minimum Amount
+            if (maxDiscountCol) {
+                maxDiscountCol.style.display = 'none';
+            }
+            if (maxDiscountInput) {
+                maxDiscountInput.disabled = true;
+                maxDiscountInput.value = '';
+            }
+
+            if (minAmountCol) {
+                minAmountCol.style.display = 'block';
+                minAmountCol.className = 'col-lg-6 col-md-6 col-12';
+            }
+
+            if (couponValueCol) {
+                couponValueCol.className = 'col-lg-6 col-md-6 col-12';
+            }
+
+            if (couponValueHint) {
+                couponValueHint.textContent = 'Discount in ₹';
+            }
+            if (couponValueInput) {
+                couponValueInput.placeholder = 'e.g. 100';
+            }
+        } else {
+            // PERCENTAGE: Show BOTH Minimum Amount and Maximum Discount
+            if (maxDiscountCol) {
+                maxDiscountCol.style.display = 'block';
+                maxDiscountCol.className = 'col-lg-4 col-md-4 col-12';
+            }
+            if (maxDiscountInput) {
+                maxDiscountInput.disabled = false;
+            }
+
+            if (minAmountCol) {
+                minAmountCol.style.display = 'block';
+                minAmountCol.className = 'col-lg-4 col-md-4 col-12';
+            }
+
+            if (couponValueCol) {
+                couponValueCol.className = 'col-lg-4 col-md-4 col-12';
+            }
+
+            if (couponValueHint) {
+                couponValueHint.textContent = 'Discount in % (e.g. 10)';
+            }
+            if (couponValueInput) {
+                couponValueInput.placeholder = 'e.g. 10';
+            }
+        }
+    }
+
+    if (couponTypeSelect) {
+        couponTypeSelect.addEventListener('change', toggleDiscountFields);
+        toggleDiscountFields();
+    }
 
 });
 

@@ -1,244 +1,199 @@
 @extends('layouts.auth')
 
-@section('title', 'Login')
+@section('title', 'Admin Panel Login')
 
 @section('content')
-<style>
-    body {
-    min-height: 100vh;
-    background: linear-gradient(
-        to right,
-        #b2d76d 0%,
-        #91cd7b 35%,
-        #88e49a 65%,
-        #f1cf8e 100%
-    );
-
-    background-attachment: fixed;
-}
-</style>
-
-
-<div class="auth-box d-flex align-items-center min-vh-100">
-
-    <div class="container-xxl">
-
-        <div class="row align-items-center justify-content-center">
-
-            <div class="col-xl-10">
-
-                <div class="card border-0 shadow-lg overflow-hidden">
-
-                    <div class="row justify-content-between g-0">
-
-                        <!-- Left Side -->
-                        <div class="col-lg-6">
-
-                            <div class="card-body p-4 p-xl-5">
-
-                                <div class="auth-brand text-center mb-4 position-relative">
-
-                                    <a href="{{ url('/') }}" class="logo-dark">
-
-                                        <img src="{{ asset('backend/assets/images/logo.png') }}"
-                                            alt="dark logo"
-                                            style="max-height:70px;" />
-
-                                    </a>
-
-                                    <h4 class="fw-bold text-dark mt-4">
-                                        Great to see you here 👋
-                                    </h4>
-
-                                    <p class="text-muted w-lg-75 mx-auto">
-                                        Let’s get you signed in.
-                                        Enter your email and password to continue.
-                                    </p>
-
-                                </div>
-
-                                <!-- Validation Errors -->
-                                @if ($errors->any())
-
-                                    <div class="alert alert-danger">
-
-                                        {{ $errors->first() }}
-
-                                    </div>
-
-                                @endif
-
-                                <!-- Session Status -->
-                                @if (session('status'))
-
-                                    <div class="alert alert-success">
-
-                                        {{ session('status') }}
-
-                                    </div>
-
-                                @endif
-
-                                <form method="POST"
-                                    action="{{ route('login') }}">
-
-                                    @csrf
-
-                                    <!-- Email -->
-                                    <div class="mb-3">
-
-                                        <label for="email"
-                                            class="form-label">
-
-                                            Email Address
-                                            <span class="text-danger">*</span>
-
-                                        </label>
-
-                                        <div class="app-search">
-
-                                            <input
-                                                type="email"
-                                                class="form-control @error('email') is-invalid @enderror"
-                                                id="email"
-                                                name="email"
-                                                placeholder="you@example.com"
-                                                value="{{ old('email') }}"
-                                                required
-                                                autofocus>
-
-                                            <i class="ti ti-mail app-search-icon text-muted"></i>
-
-                                        </div>
-
-                                        @error('email')
-
-                                            <div class="invalid-feedback d-block">
-
-                                                {{ $message }}
-
-                                            </div>
-
-                                        @enderror
-
-                                    </div>
-
-                                    <!-- Password -->
-                                  <!-- Password -->
-<div class="mb-3">
-
-    <label for="password" class="form-label">
-        Password
-        <span class="text-danger">*</span>
-    </label>
-
-    <div class="app-search position-relative">
-
-        <input
-            type="password"
-            class="form-control @error('password') is-invalid @enderror pe-5"
-            id="password"
-            name="password"
-            placeholder="••••••••"
-            required>
-
-        <!-- Lock Icon -->
-        <i class="ti ti-lock-password app-search-icon text-muted"></i>
-
-        <!-- Show/Hide Icon -->
-        <span
-            id="togglePassword"
-            style="
-                position:absolute;
-                right:15px;
-                top:50%;
-                transform:translateY(-50%);
-                cursor:pointer;
-                z-index:5;
-            ">
-
-            <i class="ti ti-eye text-muted" id="eyeIcon"></i>
-
-        </span>
-
-    </div>
-
-    @error('password')
-
-        <div class="invalid-feedback d-block">
-            {{ $message }}
-        </div>
-
-    @enderror
-
-</div>
-
-<!-- Script -->
-<script>
-    const togglePassword = document.getElementById('togglePassword');
-    const password = document.getElementById('password');
-    const eyeIcon = document.getElementById('eyeIcon');
-
-    togglePassword.addEventListener('click', function () {
-
-        const type = password.getAttribute('type') === 'password'
-            ? 'text'
-            : 'password';
-
-        password.setAttribute('type', type);
-
-        // Toggle icon
-        eyeIcon.classList.toggle('ti-eye');
-        eyeIcon.classList.toggle('ti-eye-off');
-
-    });
-</script>
-                                    <!-- Remember -->
-                                   
-
-                                    <!-- Submit -->
-                                    <div class="d-grid">
-
-                                        <button type="submit"
-                                            class="btn btn-primary fw-semibold py-2">
-
-                                            Sign In
-
-                                        </button>
-
-                                    </div>
-
-                                </form>
-
-                            </div>
-
-                        </div>
-
-                        <!-- Right Side Image -->
-                        <div class="col-lg-6 d-none d-lg-block">
-
-                            <div class="h-100 position-relative card-side-img rounded-end overflow-hidden"
-                                style="background-image: url('{{ asset('backend/assets/images/img.jpg') }}');
-                                       background-size: cover;
-                                       background-position: center;">
-
-                                <div class="p-4 card-img-overlay rounded-end auth-overlay d-flex align-items-end justify-content-center">
-                                </div>
-
-                            </div>
-
-                        </div>
-
+    <div class="row justify-content-center align-items-center py-3">
+        <div class="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4">
+            <div class="card auth-card border-0 p-3 p-sm-4">
+                <div class="card-body p-1 p-sm-2">
+
+                    <!-- Logo & Header -->
+                    <div class="text-center mb-4">
+                        <a href="{{ url('/') }}" class="d-inline-block text-decoration-none mb-3">
+                            <img src="{{ asset('backend/assets/images/KidseDental_Logo.png') }}" alt="Kids-e-Dental"
+                                class="auth-logo-img" />
+                        </a>
+                        <h3 class="auth-form-title mb-1">Admin Portal Sign In</h3>
+                        <p class="text-muted fs-sm mb-0">Enter your authorized administrative credentials</p>
                     </div>
 
-                </div>
+                    <!-- Status / Success Alerts -->
+                    @if (session('status'))
+                        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center py-2 px-3 fs-sm rounded-3 border-0 shadow-sm mb-3"
+                            role="alert">
+                            <i class="ti ti-circle-check fs-5 me-2 flex-shrink-0 text-success"></i>
+                            <div>{{ session('status') }}</div>
+                            <button type="button" class="btn-close py-2 ms-auto" data-bs-dismiss="alert"
+                                aria-label="Close"></button>
+                        </div>
+                    @endif
 
+                    @if (session('success'))
+                        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center py-2 px-3 fs-sm rounded-3 border-0 shadow-sm mb-3"
+                            role="alert">
+                            <i class="ti ti-circle-check fs-5 me-2 flex-shrink-0 text-success"></i>
+                            <div>{{ session('success') }}</div>
+                            <button type="button" class="btn-close py-2 ms-auto" data-bs-dismiss="alert"
+                                aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    <!-- Error Alerts -->
+                    @if (session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center py-2 px-3 fs-sm rounded-3 border-0 shadow-sm mb-3"
+                            role="alert">
+                            <i class="ti ti-alert-circle fs-5 me-2 flex-shrink-0 text-danger"></i>
+                            <div>{{ session('error') }}</div>
+                            <button type="button" class="btn-close py-2 ms-auto" data-bs-dismiss="alert"
+                                aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if ($errors->any() && !session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show py-2 px-3 fs-sm rounded-3 border-0 shadow-sm mb-3"
+                            role="alert">
+                            <div class="d-flex align-items-start">
+                                <i class="ti ti-alert-circle fs-5 me-2 mt-0.5 flex-shrink-0 text-danger"></i>
+                                <ul class="mb-0 ps-1 list-unstyled">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                                <button type="button" class="btn-close py-2 ms-auto" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Login Form -->
+                    <form method="POST" action="{{ route('login') }}" class="mt-2" id="loginForm">
+                        @csrf
+
+                        <!-- Email Field -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label fw-semibold text-dark fs-sm mb-1.5">
+                                Email Address
+                            </label>
+                            <div class="input-group-modern">
+                                <i class="ti ti-mail input-icon"></i>
+                                <input type="email"
+                                    class="form-control form-control-modern @error('email') is-invalid @enderror"
+                                    name="email" id="email" value="{{ old('email') }}"
+                                    placeholder="admin@kidseedental.com" required autofocus autocomplete="username" />
+                            </div>
+                            @error('email')
+                                <div class="text-danger fs-xs mt-1.5 fw-medium d-flex align-items-center">
+                                    <i class="ti ti-circle-x me-1"></i> {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Password Field -->
+                        <div class="mb-3">
+                            <label for="password" class="form-label fw-semibold text-dark fs-sm mb-1.5">
+                                Password
+                            </label>
+                            <div class="input-group-modern position-relative">
+                                <i class="ti ti-lock input-icon"></i>
+                                <input type="password"
+                                    class="form-control form-control-modern pe-5 @error('password') is-invalid @enderror"
+                                    name="password" id="password" placeholder="Enter your password" required
+                                    autocomplete="current-password" />
+                                <button type="button" class="password-toggle-btn" id="togglePasswordBtn" tabindex="-1"
+                                    aria-label="Toggle password visibility" title="Show / Hide Password">
+                                    <i class="ti ti-eye fs-5" id="togglePasswordIcon"></i>
+                                </button>
+                            </div>
+                            @error('password')
+                                <div class="text-danger fs-xs mt-1.5 fw-medium d-flex align-items-center">
+                                    <i class="ti ti-circle-x me-1"></i> {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+
+                        <!-- Remember Me & Forgot Password -->
+                        {{-- <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="remember"
+                                    id="remember" {{ old('remember') ? 'checked' : '' }}>
+                                <label class="form-check-label fs-sm text-dark user-select-none" for="remember">
+                                    Remember me
+                                </label>
+                            </div>
+                            @if (Route::has('password.request'))
+                                <a href="{{ route('password.request') }}" class="brand-link fs-sm">
+                                    Forgot Password?
+                                </a>
+                            @endif
+                        </div> --}}
+
+                        <!-- Submit Button with #ffcc00 -->
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-brand-yellow w-100" id="submitBtn">
+                                <span class="btn-text me-2 fw-bold">Sign In to Dashboard</span>
+                                <i class="ti ti-arrow-right fs-5 align-middle btn-icon"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Footer Security Note -->
+                    {{-- <div class="text-center mt-4 pt-3 border-top border-light-subtle">
+                        <p class="text-muted fs-xs mb-0">
+                            <i class="ti ti-shield-lock me-1" style="color: #d4a300;"></i> Authorized
+                            Administrative Access &bull; Kids-e-Dental
+                        </p>
+                    </div> --}}
+
+                </div>
             </div>
 
+            <!-- Bottom Page Footer -->
+            <div class="text-center mt-3">
+                <p class="fs-xs mb-0" style="color: rgba(255, 255, 255, 0.75);">
+                    <span class="fw-semibold text-white">&copy; {{ date('Y') }} Kids-e-Dental&reg;</span>
+                    <span>&bull; All Rights Reserved</span>
+                </p>
+            </div>
         </div>
-
     </div>
-
-</div>
-
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Password Show / Hide Toggle
+            const toggleBtn = document.getElementById('togglePasswordBtn');
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('togglePasswordIcon');
+
+            if (toggleBtn && passwordInput && toggleIcon) {
+                toggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const isPassword = passwordInput.getAttribute('type') === 'password';
+                    passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+                    toggleIcon.classList.toggle('ti-eye', !isPassword);
+                    toggleIcon.classList.toggle('ti-eye-off', isPassword);
+                    passwordInput.focus();
+                });
+            }
+
+            // Clean Form Submit Loading State
+            const loginForm = document.getElementById('loginForm');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (loginForm && submitBtn) {
+                loginForm.addEventListener('submit', function() {
+                    submitBtn.classList.add('disabled');
+                    submitBtn.setAttribute('disabled', 'disabled');
+                    const btnText = submitBtn.querySelector('.btn-text');
+                    const btnIcon = submitBtn.querySelector('.btn-icon');
+                    if (btnText) btnText.textContent = 'Verifying credentials...';
+                    if (btnIcon) {
+                        btnIcon.className = 'spinner-border spinner-border-sm align-middle ms-1';
+                    }
+                });
+            }
+        });
+    </script>
+@endpush

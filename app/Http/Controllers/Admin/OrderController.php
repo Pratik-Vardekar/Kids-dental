@@ -2,16 +2,167 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\HandlesCsv;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Refund;
+use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\OrderPayment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use App\Models\OrderItem;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\OrderStatusUpdated;
 
 class OrderController extends Controller
 {
+    use HandlesCsv;
+
+    // The order export headers match the columns in the Excel screenshot exactly.
+    private function orderExportHeaders(): array
+    {
+        // These headers are taken directly from the Excel screenshot you provided.
+        return [
+            'Order ID',
+            'Invoice No',
+            'Customer Name',
+            'Customer Email',
+            'Customer Phone',
+            'Payment Method',
+            'Payment Status',
+            'Order Status',
+            'Subtotal',
+            'Discount',
+            'Shipping Charge',
+            'Grand Total',
+            'Paid Amount',
+            'Due Amount',
+            'Order Date',
+            'Order Time',
+            'Product SKU',
+            'Product Name',
+            'Quantity',
+            'Item Price',
+            'Item Total'
+        ];
+    }
+
+    private function buildOrderQuery(Request $request)
+    {
+        $query = Order::with(['user', 'items.product']);
+
+        if ($request->filled('status')) {
+            if ($request->status === 'returns') {
+                $query->where(function ($q) {
+                    $q->where('order_status', 'returns')
+                        ->orWhereNotNull('return_requested_at');
+                });
+            } elseif ($request->status === 'cancelled') {
+                $query->where(function ($q) {
+                    $q->where('order_status', 'cancelled')
+                        ->orWhereNotNull('cancel_requested_at');
+                });
+            } elseif ($request->status === 'processing') {
+                $query->where(function ($q) {
+                    $q->where('order_status', 'processing')
+                        ->orWhere(function ($q2) {
+                            $q2->where('order_status', 'pending')
+                                ->whereIn('payment_method', ['cod', 'razorpay']);
+                        });
+                });
+            } else {
+                $query->where('order_status', $request->status);
+            }
+        }
+
+        if ($request->filled('payment_status')) {
+            switch ($request->payment_status) {
+                case 'full':
+                    $query->where('payment_status', 'paid')
+                        ->where(function ($q) {
+                            $q->whereNull('payment_type')
+                                ->orWhere('payment_type', '!=', 'partial');
+                        });
+                    break;
+
+                case 'partial_pending':
+                    $query->where('payment_type', 'partial')
+                        ->where('payment_status', 'partial');
+                    break;
+
+                case 'partial_completed':
+                    $query->where('payment_type', 'partial')
+                        ->where('payment_status', 'paid');
+                    break;
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('order_id', 'like', '%' . $search . '%')
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%')
+                            ->orWhere('phone', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        if ($request->filled('request_status')) {
+            switch ($request->request_status) {
+                case 'cancel_pending':
+                    $query->whereNotNull('cancel_requested_at')
+                        ->whereNull('cancel_approved_at')
+                        ->whereNull('cancel_rejected_at');
+                    break;
+
+                case 'return_pending':
+                    $query->whereNotNull('return_requested_at')
+                        ->whereNull('return_approved_at')
+                        ->whereNull('return_rejected_at');
+                    break;
+
+                case 'pending':
+                    $query->where(function ($q) {
+                        $q->where(function ($cancelQuery) {
+                            $cancelQuery->whereNotNull('cancel_requested_at')
+                                ->whereNull('cancel_approved_at')
+                                ->whereNull('cancel_rejected_at');
+                        })->orWhere(function ($returnQuery) {
+                            $returnQuery->whereNotNull('return_requested_at')
+                                ->whereNull('return_approved_at')
+                                ->whereNull('return_rejected_at');
+                        });
+                    });
+                    break;
+            }
+        }
+
+        return $query;
+    }
+
+    private function pendingRequestCount(): int
+    {
+        return Order::query()
+            ->where(function ($q) {
+                $q->where(function ($cancelQuery) {
+                    $cancelQuery->whereNotNull('cancel_requested_at')
+                        ->whereNull('cancel_approved_at')
+                        ->whereNull('cancel_rejected_at');
+                })->orWhere(function ($returnQuery) {
+                    $returnQuery->whereNotNull('return_requested_at')
+                        ->whereNull('return_approved_at')
+                        ->whereNull('return_rejected_at');
+                });
+            })
+            ->count();
+    }
+
     /*
     |--------------------------------------------------
     | STORE ORDER (CLEAN + GST READY)
@@ -55,7 +206,7 @@ class OrderController extends Controller
             // 5. Create Order
             $order = Order::create([
                 'user_id' => $user->id,
-                'order_id' => 'ORD-' . date('Ymd') . rand(1000, 9999),
+                'order_id' => Order::temporaryOrderNumber(),
 
                 'subtotal' => $subtotal,
                 'discount' => $discount,
@@ -88,6 +239,8 @@ class OrderController extends Controller
                 ]);
             }
 
+            $order->assignOrderNumber();
+
             // 7. Clear Cart
             \App\Models\Cart::where('user_id', $user->id)->delete();
 
@@ -96,7 +249,6 @@ class OrderController extends Controller
             return redirect()
                 ->route('order.success', $order->id)
                 ->with('success', 'Order placed successfully');
-
         } catch (\Exception $e) {
             DB::rollback();
             return back()->with('error', $e->getMessage());
@@ -110,19 +262,23 @@ class OrderController extends Controller
     */
     public function index(Request $request)
     {
-        $query = Order::with('user');
+        Order::where('order_status', 'pending')
+            ->whereIn('payment_method', ['cod', 'razorpay'])
+            ->update(['order_status' => 'processing']);
 
-        if ($request->filled('search')) {
-            $query->where('order_id', 'like', '%' . $request->search . '%');
+        $orders = $this->buildOrderQuery($request)
+            ->with(['user', 'addresses', 'items.product'])
+            ->latest()
+            ->paginate(8)
+            ->withQueryString();
+
+        $pendingRequestCount = $this->pendingRequestCount();
+
+        if ($request->ajax()) {
+            return view('admin.order.partials.order-table', compact('orders', 'pendingRequestCount'))->render();
         }
 
-        if ($request->filled('status')) {
-            $query->where('order_status', $request->status);
-        }
-
-        $orders = $query->latest()->paginate(10);
-
-        return view('admin.order.index', compact('orders'));
+        return view('admin.order.index', compact('orders', 'pendingRequestCount'));
     }
 
     /*
@@ -132,9 +288,11 @@ class OrderController extends Controller
     */
     public function show(Order $order)
     {
-        $order->load('user', 'items.product', 'orderPayments');
+        $order->normalizeDocumentNumbers();
+        $order->load('user', 'items.product.gstSetting', 'orderPayments', 'addresses');
+        $orderSummary = $order->getOrderSummary();
 
-        return view('admin.order.show', compact('order'));
+        return view('admin.order.show', compact('order', 'orderSummary'));
     }
 
     /*
@@ -148,11 +306,248 @@ class OrderController extends Controller
             'order_status' => 'required',
         ]);
 
-        $order->update([
+        $payload = [
             'order_status' => $request->order_status,
+        ];
+
+        if ($request->order_status === 'delivered') {
+            if (! $order->delivered_at) {
+                $payload['delivered_at'] = now();
+            }
+
+            if (! $order->returnable_until) {
+                $payload['returnable_until'] = now()->addDays(7)->toDateString();
+            }
+        }
+
+        if ($request->order_status === 'cancelled' && $order->cancel_requested_at && ! $order->cancel_approved_at) {
+            $payload['cancelled_at'] = now();
+            $payload['cancel_approved_at'] = now();
+            $payload['cancel_rejected_at'] = null;
+        }
+
+        if ($request->order_status === 'returns' && $order->return_requested_at && ! $order->return_approved_at) {
+            $payload['return_approved_at'] = now();
+            $payload['return_rejected_at'] = null;
+            $payload['returned_at'] = now();
+        }
+
+        $order->update($payload);
+
+        if ($request->has('send_email') && $request->send_email == 1) {
+            $status = ucfirst($request->order_status);
+
+            // Send to User
+            if ($order->user && $order->user->email) {
+                Mail::to($order->user->email)->send(new OrderStatusUpdated($order, $status, false));
+            }
+
+            // Send to Admin (Assuming an admin email from config or hardcoded for now, checking general setting if available or just the first admin)
+            $adminEmail = env('MAIL_FROM_ADDRESS', 'admin@goyalinfotech.in');
+            Mail::to($adminEmail)->send(new OrderStatusUpdated($order, $status, true));
+        }
+
+        return redirect()
+            ->route('order.index')
+            ->with('success', 'Order Status Updated Successfully');
+    }
+
+    public function approveCancelRequest(Request $request, Order $order)
+    {
+        $request->validate([
+            'decision_note' => 'nullable|string|max:1000',
         ]);
 
-        return back()->with('success', 'Order Status Updated Successfully');
+        if (! $order->cancel_requested_at || $order->cancel_approved_at) {
+            return back()->with('error', 'No pending cancellation request found.');
+        }
+
+        $order->update([
+            'order_status' => 'cancelled',
+            'cancelled_at' => now(),
+            'cancel_approved_at' => now(),
+            'cancel_rejected_at' => null,
+            'cancel_decision_note' => $request->decision_note,
+        ]);
+
+        if ($order->payment_method === 'razorpay' && (float) $order->paid_amount > 0) {
+            $alreadyRequested = $order->refunds()
+                ->where('status', '!=', 'rejected')
+                ->sum('amount');
+
+            $availableRefund = max(0, (float) $order->paid_amount - (float) $alreadyRequested);
+
+            if ($availableRefund > 0) {
+                Refund::create([
+                    'order_id' => $order->id,
+                    'amount' => $availableRefund,
+                    'reason' => 'Auto-created after approved cancellation request.',
+                    'status' => 'pending',
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Cancellation request approved successfully.');
+    }
+
+    public function rejectCancelRequest(Request $request, Order $order)
+    {
+        $request->validate([
+            'decision_note' => 'nullable|string|max:1000',
+        ]);
+
+        if (! $order->cancel_requested_at || $order->cancel_approved_at) {
+            return back()->with('error', 'No pending cancellation request found.');
+        }
+
+        $order->update([
+            'cancel_rejected_at' => now(),
+            'cancel_approved_at' => null,
+            'cancel_decision_note' => $request->decision_note,
+        ]);
+
+        return back()->with('success', 'Cancellation request rejected successfully.');
+    }
+
+    public function approveReturnRequest(Request $request, Order $order)
+    {
+        $request->validate([
+            'pickup_date' => 'nullable|date',
+            'decision_note' => 'nullable|string|max:1000',
+        ]);
+
+        if (! $order->return_requested_at || $order->return_approved_at) {
+            return back()->with('error', 'No pending return or exchange request found.');
+        }
+
+        $order->update([
+            'order_status' => 'returns',
+            'return_approved_at' => now(),
+            'return_rejected_at' => null,
+            'return_decision_note' => $request->decision_note,
+            'pickup_date' => $request->pickup_date,
+            'returned_at' => now(),
+        ]);
+
+        if (
+            $order->return_request_type === 'return' &&
+            $order->payment_method === 'razorpay' &&
+            (float) $order->paid_amount > 0
+        ) {
+            $alreadyRequested = $order->refunds()
+                ->where('status', '!=', 'rejected')
+                ->sum('amount');
+
+            $availableRefund = max(0, (float) $order->paid_amount - (float) $alreadyRequested);
+
+            if ($availableRefund > 0) {
+                Refund::create([
+                    'order_id' => $order->id,
+                    'amount' => $availableRefund,
+                    'reason' => 'Auto-created after approved return request.',
+                    'status' => 'pending',
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Return or exchange request approved successfully.');
+    }
+
+    public function rejectReturnRequest(Request $request, Order $order)
+    {
+        $request->validate([
+            'decision_note' => 'nullable|string|max:1000',
+        ]);
+
+        if (! $order->return_requested_at || $order->return_approved_at) {
+            return back()->with('error', 'No pending return or exchange request found.');
+        }
+
+        $order->update([
+            'return_rejected_at' => now(),
+            'return_approved_at' => null,
+            'return_decision_note' => $request->decision_note,
+            'pickup_date' => null,
+        ]);
+
+        return back()->with('success', 'Return or exchange request rejected successfully.');
+    }
+
+    public function receiveRemainingPayment(Request $request, Order $order)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:1'
+        ]);
+
+        $amount = (float) $request->amount;
+
+        if ($amount > $order->due_amount) {
+            return back()->with('error', 'Amount cannot exceed due amount.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $payment = DB::table('order_payments')
+                ->where('order_id', $order->id)
+                ->where('payment_stage', 'remaining')
+                ->where('status', 'pending')
+                ->first();
+
+            if ($payment) {
+                DB::table('order_payments')
+                    ->where('id', $payment->id)
+                    ->update([
+                        'amount' => $amount,
+                        'payment_method' => 'manual',
+                        'status' => 'success',
+                        'paid_at' => now(),
+                        'note' => 'Paid from admin panel',
+                        'updated_at' => now(),
+                    ]);
+            } else {
+                OrderPayment::create([
+                    'order_id' => $order->id,
+                    'amount' => $amount,
+                    'payment_method' => strtolower((string) ($order->payment_method ?? 'manual')) === 'cod'
+                        ? 'cod'
+                        : 'manual',
+                    'status' => 'success',
+                    'paid_at' => now(),
+                    'note' => 'Marked paid from admin panel',
+                    'type' => 'payment',
+                ]);
+            }
+
+            $newPaid = round(min((float) $order->grand_total, (float) $order->paid_amount + $amount), 2);
+            $newDue = round(max(0, (float) $order->grand_total - $newPaid), 2);
+
+            $updateData = [
+                'paid_amount' => $newPaid,
+                'due_amount' => $newDue,
+                'payment_status' => $newDue <= 0 ? 'paid' : 'partial',
+            ];
+
+            if (
+                strtolower((string) ($order->order_status ?? '')) === 'pending'
+                && in_array(strtolower((string) ($order->payment_method ?? '')), ['cod', 'razorpay'], true)
+            ) {
+                $updateData['order_status'] = 'processing';
+            }
+
+            $order->update($updateData);
+
+            DB::commit();
+
+            return redirect()
+                ->back()
+                ->with('success', 'Payment recorded successfully. Order marked as paid.');
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     /*
@@ -163,14 +558,34 @@ class OrderController extends Controller
     public function paymentStatusUpdate(Request $request, Order $order)
     {
         $request->validate([
-            'payment_status' => 'required',
+            'payment_status' => 'required|in:pending,paid,partial,processing,failed',
         ]);
+
+        $newStatus = strtolower($request->payment_status);
+
+        if ($newStatus === 'paid') {
+            $summary = $order->getOrderSummary();
+
+            if (! $summary['is_fully_paid']) {
+                $dueAmount = round(max(0, $summary['grand_total'] - $summary['total_paid']), 2);
+
+                if ($dueAmount > 0) {
+                    $request->merge(['amount' => $dueAmount]);
+
+                    return $this->receiveRemainingPayment($request, $order);
+                }
+            }
+
+            $order->update(['payment_status' => 'paid']);
+
+            return back()->with('success', 'Payment marked as paid.');
+        }
 
         $order->update([
-            'payment_status' => $request->payment_status,
+            'payment_status' => $newStatus,
         ]);
 
-        return back()->with('success', 'Payment Status Updated Successfully');
+        return back()->with('success', 'Payment status updated successfully.');
     }
 
     /*
@@ -180,7 +595,8 @@ class OrderController extends Controller
     */
     public function invoice(Order $order)
     {
-       $order->load([ 'user', 'items.product', 'items.variant', 'orderPayments', 'refunds' ]);
+        $order->normalizeDocumentNumbers();
+        $order->load(['user', 'items.product', 'items.variant', 'orderPayments', 'refunds', 'addresses']);
 
         return view('admin.order.invoice', compact('order'));
     }
@@ -192,7 +608,8 @@ class OrderController extends Controller
     */
     public function printInvoice(Order $order)
     {
-$order->load([ 'user', 'items.product', 'items.variant', 'orderPayments', 'refunds' ]);
+        $order->normalizeDocumentNumbers();
+        $order->load(['user', 'items.product', 'items.variant', 'orderPayments', 'refunds']);
         return view('admin.order.print', compact('order'));
     }
 
@@ -203,11 +620,27 @@ $order->load([ 'user', 'items.product', 'items.variant', 'orderPayments', 'refun
     */
     public function downloadPdf(Order $order)
     {
-        $order->load('user', 'items.product');
+        $order->normalizeDocumentNumbers();
 
-        $pdf = Pdf::loadView('admin.order.invoice', compact('order'));
+        $order->load([
+            'user',
+            'items.product',
+            'items.variant',
+            'orderPayments',
+            'refunds',
+            'addresses'
+        ]);
 
-        return $pdf->download('invoice-' . $order->order_id . '.pdf');
+        $pdf = Pdf::loadView('admin.order.invoice', compact('order'))
+            ->setPaper('a4');
+
+        $filename = $order->invoicePdfFilename();
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
     }
 
     /*
@@ -217,51 +650,241 @@ $order->load([ 'user', 'items.product', 'items.variant', 'orderPayments', 'refun
     */
     public function export(Request $request)
     {
-        $query = Order::with('user');
-
-        if ($request->filled('search')) {
-            $query->where('order_id', 'like', '%' . $request->search . '%');
-        }
-
-        $orders = $query->latest()->get();
-
+        $orders = $this->buildOrderQuery($request)->latest()->get();
         $fileName = 'orders_' . date('Y-m-d_His') . '.csv';
 
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=$fileName",
-        ];
-
-        $callback = function () use ($orders) {
-            $file = fopen('php://output', 'w');
-
-            fputs($file, "\xEF\xBB\xBF");
-
-            fputcsv($file, [
-                'Order ID',
-                'Customer Name',
-                'Email',
-                'Payment Method',
-                'Status',
-                'Grand Total',
-                'Date',
-            ]);
-
+        return $this->streamCsvDownload($fileName, $this->orderExportHeaders(), function ($file) use ($orders) {
             foreach ($orders as $order) {
-                fputcsv($file, [
-                    $order->order_id,
+                $baseRow = [
+                    $order->display_order_id,
+                    $order->display_invoice_no,
                     $order->user->name ?? 'Guest',
-                    $order->user->email ?? '-',
-                    $order->payment_method ?? '-',
-                    $order->payment_status ?? '-',
+                    $order->user->email ?? '',
+                    $order->user->phone ?? '',
+                    $order->payment_method ?? '',
+                    $order->payment_status ?? '',
+                    $order->order_status ?? '',
+                    $order->subtotal ?? 0,
+                    $order->discount ?? 0,
+                    $order->shipping_charge ?? 0,
                     $order->grand_total ?? 0,
-                    $order->created_at->format('d-m-Y'),
-                ]);
+                    $order->paid_amount ?? 0,
+                    $order->due_amount ?? 0,
+                    // Split order date and time into separate columns for Excel compatibility
+                    $order->created_at ? $order->created_at->format('d-m-Y') : '',
+                    $order->created_at ? $order->created_at->format('H:i:s') : '', // Time column
+                ];
+
+                if ($order->items->isEmpty()) {
+                    fputcsv($file, array_merge($baseRow, ['', '', '', '', '']));
+                    continue;
+                }
+
+                foreach ($order->items as $item) {
+                    fputcsv($file, array_merge($baseRow, [
+                        $item->product->sku ?? '',
+                        $item->product->name ?? '',
+                        $item->quantity,
+                        $item->price,
+                        $item->total,
+                    ]));
+                }
             }
+        });
+    }
 
-            fclose($file);
-        };
+    public function importSample()
+    {
+        $fileName = 'orders_import_sample.csv';
 
-        return response()->stream($callback, 200, $headers);
+        return $this->streamCsvDownload($fileName, $this->orderExportHeaders(), function ($file) {
+            fputcsv($file, [
+                'ORD-20260620-1001',
+                'INV-2026060001',
+                'John Doe',
+                'john@example.com',
+                '9876543210',
+                'cod',
+                'paid',
+                'processing',
+                '1000',
+                '0',
+                '50',
+                '1050',
+                '1050',
+                '0',
+                date('d-m-Y'), // Date column
+                date('H:i:s'), // Time column
+                'SKU-001',
+                'Sample Product',
+                '2',
+                '500',
+                '1000',
+            ]);
+        });
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:10240',
+        ]);
+
+        $parsed = $this->parseCsvFile($request->file('file'));
+
+        if (empty($parsed['rows'])) {
+            return back()->with('error', 'CSV file is empty or invalid.');
+        }
+
+        $grouped = [];
+        foreach ($parsed['rows'] as $index => $row) {
+            $orderKey = $this->csvValue($row, 'order_id') ?: 'ROW-' . ($index + 2);
+            $grouped[$orderKey][] = $row;
+        }
+
+        $imported = 0;
+        $skipped = 0;
+        $errors = [];
+
+        foreach ($grouped as $orderKey => $rows) {
+            $firstRow = $rows[0];
+
+            try {
+                DB::transaction(function () use ($firstRow, $rows, &$imported, &$skipped, $orderKey) {
+                    $email = $this->csvValue($firstRow, 'customer_email');
+                    $name = $this->csvValue($firstRow, 'customer_name', 'Imported Customer');
+
+                    if (!$email) {
+                        throw new \RuntimeException("Order {$orderKey}: customer email is required.");
+                    }
+
+                    $user = User::where('email', $email)->first();
+                    if (!$user) {
+                        $user = User::create([
+                            'name' => $name,
+                            'email' => $email,
+                            'phone' => $this->csvValue($firstRow, 'customer_phone'),
+                            'password' => Hash::make(Str::random(16)),
+                            'status' => 1,
+                        ]);
+                    }
+
+                    $orderId = $this->csvValue($firstRow, 'order_id');
+                    if (!$orderId) {
+                        $orderId = Order::generateOrderId();
+                    }
+
+                    $existing = Order::where('order_id', $orderId)->first();
+                    if ($existing) {
+                        $skipped++;
+                        return;
+                    }
+
+                    $subtotal = (float) $this->csvValue($firstRow, 'subtotal', 0);
+                    $discount = (float) $this->csvValue($firstRow, 'discount', 0);
+                    $shipping = (float) $this->csvValue($firstRow, 'shipping_charge', 0);
+                    $grandTotal = (float) $this->csvValue($firstRow, 'grand_total', 0);
+                    $paidAmount = (float) $this->csvValue($firstRow, 'paid_amount', $grandTotal);
+                    $dueAmount = (float) $this->csvValue($firstRow, 'due_amount', max(0, $grandTotal - $paidAmount));
+
+                    // Handle date/time parse for import
+                    $date = $this->csvValue($firstRow, 'order_date');
+                    $time = $this->csvValue($firstRow, 'order_time');
+                    $createdAt = null;
+                    if ($date && $time) {
+                        // Both present, try to combine
+                        $createdAt = \Carbon\Carbon::createFromFormat('d-m-Y H:i:s', $date . ' ' . $time);
+                    } elseif ($date) {
+                        // Only date, use date with midnight
+                        $createdAt = \Carbon\Carbon::createFromFormat('d-m-Y', $date)->startOfDay();
+                    }
+
+                    $order = Order::create([
+                        'user_id' => $user->id,
+                        'order_id' => $orderId,
+                        'invoice_no' => $this->csvValue($firstRow, 'invoice_no') ?: null,
+                        'subtotal' => $subtotal,
+                        'discount' => $discount,
+                        'shipping_charge' => $shipping,
+                        'grand_total' => $grandTotal > 0 ? $grandTotal : $subtotal - $discount + $shipping,
+                        'paid_amount' => $paidAmount,
+                        'due_amount' => $dueAmount,
+                        'payment_method' => $this->csvValue($firstRow, 'payment_method', 'cod'),
+                        'payment_status' => $this->csvValue($firstRow, 'payment_status', 'paid'),
+                        'order_status' => $this->csvValue($firstRow, 'order_status', 'processing'),
+                        'payment_type' => 'full',
+                        'created_at' => $createdAt,
+                        'updated_at' => $createdAt ?: now(),
+                    ]);
+
+                    foreach ($rows as $row) {
+                        $sku = $this->csvValue($row, 'product_sku');
+                        if (!$sku) {
+                            continue;
+                        }
+
+                        $product = Product::where('sku', $sku)->first();
+                        if (!$product) {
+                            throw new \RuntimeException("Order {$orderId}: product SKU {$sku} not found.");
+                        }
+
+                        $quantity = (int) $this->csvValue($row, 'quantity', 1);
+                        $price = (float) $this->csvValue($row, 'item_price', $product->selling_price);
+                        $total = (float) $this->csvValue($row, 'item_total', $price * $quantity);
+
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'product_id' => $product->id,
+                            'quantity' => $quantity,
+                            'price' => $price,
+                            'total' => $total,
+                        ]);
+                    }
+
+                    $imported++;
+                });
+            } catch (\Throwable $e) {
+                $errors[] = $e->getMessage();
+            }
+        }
+
+        $message = "Import complete: {$imported} order(s) imported";
+        if ($skipped > 0) {
+            $message .= ", {$skipped} skipped (already exist)";
+        }
+
+        return redirect()
+            ->route('order.index')
+            ->with('success', $message)
+            ->with('import_errors', $errors);
+    }
+
+    public function transactions(Request $request)
+    {
+        $query = OrderPayment::with(['order.user']);
+
+        // Search by Order ID
+        if ($request->filled('search')) {
+            $query->whereHas('order', function ($q) use ($request) {
+                $q->where('order_id', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        // Status filter
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Payment method filter
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
+        }
+
+        $transactions = $query->latest()->paginate(20);
+
+        // keep filters in pagination
+        $transactions->appends($request->all());
+
+        return view('admin.transaction.index', compact('transactions'));
     }
 }

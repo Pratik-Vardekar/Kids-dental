@@ -4,10 +4,21 @@
 
 <div class="container-fluid my-2">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
             <h4 class="mb-1">Reviews</h4>
             <p class="text-muted mb-0">Manage product reviews & ratings</p>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <a href="{{ route('review.create') }}" class="btn btn-primary">
+                <i class="ti ti-plus me-1"></i>
+                Add Review
+            </a>
+            <a href="{{ route('review.export', request()->all()) }}" class="btn btn-success">
+                <i class="ti ti-file-export me-1"></i>
+                Export CSV
+            </a>
         </div>
     </div>
 
@@ -21,13 +32,13 @@
     <div class="card">
         <div class="card-body">
 
-            <!-- FILTERS -->
-            <form method="GET" action="{{ route('review.index') }}" class="mb-4">
-                <div class="row g-3 align-items-end">
+            <!-- RESPONSIVE FILTERS -->
+            <form method="GET" action="{{ route('admin.review.index') }}" class="mb-4">
+                <div class="row g-3">
                     <!-- Search -->
-                    <div class="col-md-3">
+                    <div class="col-12 col-md-6 col-lg-3">
                         <label class="form-label small text-muted mb-1">
-                            Search
+                            <i class="ti ti-search me-1"></i> Search
                         </label>
                         <input type="text"
                             name="search"
@@ -37,25 +48,25 @@
                     </div>
 
                     <!-- Product Filter -->
-                    <div class="col-md-3">
+                    <div class="col-12 col-md-6 col-lg-3">
                         <label class="form-label small text-muted mb-1">
-                            Product
+                            <i class="ti ti-package me-1"></i> Product
                         </label>
                         <select name="product_id" class="form-select">
                             <option value="">All Products</option>
                             @foreach($products ?? [] as $product)
                                 <option value="{{ $product->id }}"
                                     {{ request('product_id') == $product->id ? 'selected' : '' }}>
-                                    {{ $product->name }}
+                                    {{ Str::limit($product->name, 40) }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
 
                     <!-- Rating Filter -->
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-6 col-lg-2">
                         <label class="form-label small text-muted mb-1">
-                            Rating
+                            <i class="ti ti-star me-1"></i> Rating
                         </label>
                         <select name="rating" class="form-select">
                             <option value="">All Ratings</option>
@@ -68,9 +79,9 @@
                     </div>
 
                     <!-- Status Filter -->
-                    <div class="col-md-2">
+                    <div class="col-12 col-md-6 col-lg-2">
                         <label class="form-label small text-muted mb-1">
-                            Status
+                            <i class="ti ti-circle-check me-1"></i> Status
                         </label>
                         <select name="status" class="form-select">
                             <option value="">All Status</option>
@@ -83,33 +94,18 @@
                         </select>
                     </div>
 
-                    <!-- Date Filter -->
-                    <div class="col-md-2">
-                        <label class="form-label small text-muted mb-1">
-                            Created Date
-                        </label>
-                        <input type="date"
-                            name="date"
-                            class="form-control"
-                            value="{{ request('date') }}">
-                    </div>
-
-                    <!-- Buttons -->
-                    <div class="col-md-2">
+                    <!-- Buttons - Full width on mobile -->
+                    <div class="col-12 col-lg-2">
+                        <label class="form-label small text-muted mb-1 d-none d-lg-block">&nbsp;</label>
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary flex-grow-1">
                                 <i class="ti ti-filter me-1"></i>
                                 Filter
                             </button>
 
-                            <a href="{{ route('review.index') }}" class="btn btn-secondary">
-                                <i class="ti ti-refresh"></i>
-                            </a>
-
-                            <!-- CSV Export Button -->
-                            <a href="{{ route('review.export', request()->all()) }}" class="btn btn-success">
-                                <i class="ti ti-file-export"></i>
-                                CSV
+                            <a href="{{ route('admin.review.index') }}" class="btn btn-secondary" title="Reset Filters">
+                                <i class="ti ti-refresh me-1"></i>
+                                <span class="d-none d-md-inline">Reset</span>
                             </a>
                         </div>
                     </div>
@@ -117,24 +113,23 @@
             </form>
 
             <div class="table-responsive">
-                <table class="table table-custom table-centered table-hover w-100 mb-0">
-                    <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+                <table class="table table-custom table-hover w-100 mb-0">
+                    <thead class="bg-light bg-opacity-25 thead-sm">
                         <tr class="text-uppercase fs-xxs">
-                            <th style="width: 50px">#</th>
-                            <th style="width: 200px">User</th>
-                            <th style="width: 250px">Product</th>
-                            <th style="width: 100px">Rating</th>
+                            <th style="width: 50px" class="text-center">#</th>
+                            <th style="width: 180px">User</th>
+                            <th style="width: 220px">Product</th>
+                            <th style="width: 100px" class="text-center">Rating</th>
                             <th>Review</th>
-                            <th style="width: 100px">Image</th>
-                            <th style="width: 100px">Status</th>
-                            <th style="width: 110px">Date</th>
+                            <th style="width: 80px" class="text-center">Image</th>
+                            <th style="width: 100px" class="text-center">Status</th>
                             <th style="width: 80px" class="text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($reviews as $index => $review)
                         <tr>
-                            <td class="align-middle">
+                            <td class="align-middle text-center">
                                 @if(method_exists($reviews, 'firstItem'))
                                     {{ $reviews->firstItem() + $index }}
                                 @else
@@ -144,7 +139,7 @@
                             <td class="align-middle">
                                 <div>
                                     <h6 class="mb-0 fw-semibold">
-                                        {{ $review->user->name ?? '-' }}
+                                        {{ $review->user->name ?? 'Guest User' }}
                                     </h6>
                                     <small class="text-muted">
                                         {{ $review->user->email ?? '-' }}
@@ -152,46 +147,75 @@
                                 </div>
                             </td>
                             <td class="align-middle">
-                                <div class="d-flex align-items-center">
+                                <div class="d-flex align-items-center gap-2">
                                     @php
-                                        $gallery = $review->product->gallery ?? [];
+                                        $thumbnail = $review->product->thumbnail ?? null;
                                     @endphp
-                                    @if(!empty($gallery) && isset($gallery[0]))
-                                        <img src="{{ asset('backend/assets/images/product/' . $gallery[0]) }}"
-                                            class="rounded border me-2"
-                                            style="width:40px; height:40px; object-fit:cover;">
+                                    @if($thumbnail)
+                                        <img src="{{ asset('backend/assets/images/product/' . $thumbnail) }}"
+                                            class="rounded border"
+                                            style="width: 40px; height: 40px; object-fit: cover;"
+                                            alt="{{ $review->product->name ?? 'Product' }}">
+                                    @else
+                                        <div class="rounded border bg-light d-flex align-items-center justify-content-center"
+                                            style="width: 40px; height: 40px;">
+                                            <i class="ti ti-package fs-5 text-muted"></i>
+                                        </div>
                                     @endif
                                     <div>
-                                        <h6 class="mb-0">
-                                            {{ $review->product->name ?? '-' }}
+                                        <h6 class="mb-0 fw-semibold">
+                                            {{ Str::limit($review->product->name ?? 'Deleted Product', 50) }}
                                         </h6>
+                                        <small class="text-muted">
+                                            SKU: {{ $review->product->sku ?? '-' }}
+                                        </small>
                                     </div>
                                 </div>
                             </td>
-                            <td class="align-middle">
-                                <div class="fs-14">
-                                    @for($i = 1; $i <= 5; $i++)
-                                        @if($i <= $review->rating)
-                                            <i class="ti ti-star-filled text-warning"></i>
-                                        @else
-                                            <i class="ti ti-star text-muted"></i>
-                                        @endif
-                                    @endfor
+                            <td class="align-middle text-center">
+                                <div class="d-flex flex-column align-items-center">
+                                    <div class="fs-14">
+                                        @for($i = 1; $i <= 5; $i++)
+                                            @if($i <= $review->rating)
+                                                <i class="ti ti-star-filled text-warning"></i>
+                                            @else
+                                                <i class="ti ti-star text-muted"></i>
+                                            @endif
+                                        @endfor
+                                    </div>
+                                    <span class="fw-bold mt-1">{{ $review->rating }}/5</span>
                                 </div>
                             </td>
-                            <td class="align-middle" style="max-width:300px; white-space:normal; word-break:break-word;">
-                                {{ Str::limit($review->review, 100) }}
-                            </td>
                             <td class="align-middle">
+                                <div class="review-text" style="max-width: 350px;">
+                                    @if($review->review)
+                                        <p class="mb-0 small">
+                                            {{ Str::limit($review->review, 150) }}
+                                        </p>
+                                        @if(strlen($review->review) > 150)
+                                            <a href="#" class="text-primary small read-more" data-full="{{ e($review->review) }}">
+                                                Read more
+                                            </a>
+                                        @endif
+                                    @else
+                                        <span class="text-muted fst-italic">No review text provided</span>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="align-middle text-center">
                                 @if($review->image)
                                     <img src="{{ asset('backend/assets/images/review/' . $review->image) }}"
-                                        class="rounded border"
-                                        style="width:50px; height:50px; object-fit:cover;">
+                                        class="rounded border review-image"
+                                        style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#imageModal"
+                                        data-image="{{ asset('backend/assets/images/review/' . $review->image) }}"
+                                        alt="Review Image">
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif
                             </td>
-                            <td class="align-middle">
+                            <td class="align-middle text-center">
                                 @if($review->status == 1)
                                     <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fs-xxs">
                                         <i class="ti ti-circle-check me-1"></i>
@@ -204,13 +228,10 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="align-middle text-muted">
-                                {{ $review->created_at->format('d M, Y') }}
-                            </td>
-                            <td class="align-middle">
+                            <td class="align-middle text-center">
                                 <div class="d-flex justify-content-center gap-1">
-                                    <!-- STATUS TOGGLE with dropdown replaced by button -->
-                                    <form action="{{ route('review.status', $review->id) }}" method="POST">
+                                    <!-- STATUS TOGGLE -->
+                                    <form action="{{ route('review.status', $review->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button type="submit"
                                             class="btn btn-light btn-icon btn-sm rounded-circle"
@@ -226,6 +247,7 @@
                                     <!-- DELETE -->
                                     <form action="{{ route('review.destroy', $review->id) }}"
                                         method="POST"
+                                        class="d-inline"
                                         onsubmit="return confirm('Delete this review? This action cannot be undone.')">
                                         @csrf
                                         @method('DELETE')
@@ -240,10 +262,13 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" class="text-center py-5">
+                            <td colspan="8" class="text-center py-5">
                                 <div class="d-flex flex-column align-items-center">
                                     <i class="ti ti-message-2 fs-1 text-muted mb-2"></i>
                                     <p class="text-muted mb-0">No reviews found</p>
+                                    <a href="{{ route('admin.review.index') }}" class="btn btn-sm btn-primary mt-3">
+                                        <i class="ti ti-refresh me-1"></i> Clear Filters
+                                    </a>
                                 </div>
                             </td>
                         </tr>
@@ -252,7 +277,7 @@
                 </table>
             </div>
 
-            <!-- Responsive Pagination - Only show if it's a paginator -->
+            <!-- Responsive Pagination -->
             @if(method_exists($reviews, 'hasPages') && $reviews->hasPages())
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 pt-2 border-top">
                     <div class="text-muted small mb-3 mb-md-0">
@@ -370,7 +395,6 @@
                     </div>
                 </div>
             @elseif(method_exists($reviews, 'count') && $reviews->count() > 0)
-                <!-- Simple info when only one page (no pagination needed) -->
                 <div class="text-center text-muted small mt-3 pt-2 border-top">
                     Showing {{ $reviews->count() }} entries
                 </div>
@@ -378,7 +402,36 @@
 
         </div>
     </div>
+</div>
 
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Review Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" id="modalImage" class="img-fluid" alt="Review Image">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Read More Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Full Review</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="fullReviewText"></p>
+            </div>
+        </div>
+    </div>
 </div>
 
 @endsection
@@ -396,6 +449,7 @@
     }
     .fs-xxs {
         font-size: 0.7rem;
+        font-weight: 600;
     }
     .fs-14 {
         font-size: 14px;
@@ -436,6 +490,41 @@
     .rounded-3 {
         border-radius: 0.5rem !important;
     }
+    .text-warning {
+        color: #f59e0b !important;
+    }
+    .ti-star-filled, .ti-star {
+        font-size: 14px;
+    }
+    
+    /* Review text styling */
+    .review-text {
+        line-height: 1.5;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+    
+    .review-text p {
+        margin-bottom: 0;
+    }
+    
+    .read-more {
+        font-size: 0.75rem;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    
+    .read-more:hover {
+        text-decoration: underline;
+    }
+    
+    /* Table cell alignment */
+    .table-custom td, 
+    .table-custom th {
+        vertical-align: middle;
+    }
+    
+    /* Responsive table */
     @media (max-width: 768px) {
         .table-responsive {
             font-size: 0.85rem;
@@ -447,12 +536,64 @@
         .fs-5 {
             font-size: 1rem !important;
         }
+        .table-custom td, 
+        .table-custom th {
+            padding: 0.75rem 0.5rem;
+        }
     }
-    .text-warning {
-        color: #f59e0b !important;
+    
+    /* Hover effect for review images */
+    .review-image:hover {
+        opacity: 0.8;
+        transform: scale(1.05);
+        transition: all 0.2s ease;
+        cursor: pointer;
     }
-    .ti-star-filled, .ti-star {
-        font-size: 14px;
+    
+    /* Badge styling */
+    .badge {
+        font-weight: 500;
+    }
+    
+    /* Form labels */
+    .form-label {
+        font-weight: 500;
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Image modal handler
+        const imageModal = document.getElementById('imageModal');
+        if (imageModal) {
+            imageModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const imageUrl = button.getAttribute('data-image');
+                const modalImage = document.getElementById('modalImage');
+                if (modalImage) {
+                    modalImage.src = imageUrl;
+                }
+            });
+        }
+        
+        // Read more modal handler
+        const readMoreLinks = document.querySelectorAll('.read-more');
+        const reviewModal = document.getElementById('reviewModal');
+        
+        readMoreLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const fullText = this.getAttribute('data-full');
+                const fullReviewText = document.getElementById('fullReviewText');
+                if (fullReviewText && reviewModal) {
+                    fullReviewText.textContent = fullText;
+                    const modal = new bootstrap.Modal(reviewModal);
+                    modal.show();
+                }
+            });
+        });
+    });
+</script>
 @endpush
